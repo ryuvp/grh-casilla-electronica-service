@@ -1,0 +1,308 @@
+// 11 colores del sidebar según la imagen (ejemplo de paleta, reemplaza los hex si tienes otros)
+$app-sidebar-bg-color-yellow: #ffeb00;
+$app-sidebar-bg-color-dark-yellow: #fcc900;
+$app-sidebar-bg-color-orange: #f09000;
+$app-sidebar-bg-color-dark-green: #49764f;
+$app-sidebar-bg-color-green: #009c61;
+$app-sidebar-bg-color-light-green: #6cb883;
+$app-sidebar-bg-color-pink: #e63087;
+$app-sidebar-bg-color-dark-pink: #ab466e;
+$app-sidebar-bg-color-blue: #1d70b6;
+$app-sidebar-bg-color-dark-blue: #2a3080;
+$app-sidebar-bg-color-lime: #7cb733;
+
+// Sidebar background color classes
+.sidebar-bg-yellow {
+  background-color: $app-sidebar-bg-color-yellow !important;
+}
+
+.sidebar-bg-dark-yellow {
+  background-color: $app-sidebar-bg-color-dark-yellow !important;
+}
+
+.sidebar-bg-orange {
+  background-color: $app-sidebar-bg-color-orange !important;
+}
+
+.sidebar-bg-dark-green {
+  background-color: $app-sidebar-bg-color-dark-green !important;
+}
+
+.sidebar-bg-green {
+  background-color: $app-sidebar-bg-color-green !important;
+}
+
+.sidebar-bg-light-green {
+  background-color: $app-sidebar-bg-color-light-green !important;
+}
+
+.sidebar-bg-pink {
+  background-color: $app-sidebar-bg-color-pink !important;
+}
+
+.sidebar-bg-dark-pink {
+  background-color: $app-sidebar-bg-color-dark-pink !important;
+}
+
+.sidebar-bg-blue {
+  background-color: $app-sidebar-bg-color-blue !important;
+}
+
+.sidebar-bg-dark-blue {
+  background-color: $app-sidebar-bg-color-dark-blue !important;
+}
+
+.sidebar-bg-lime {
+  background-color: $app-sidebar-bg-color-lime !important;
+}
+
+// Sidebar background color classes para los 11 colores personalizados
+.sidebar-bg-yellow,
+.sidebar-bg-dark-yellow,
+.sidebar-bg-orange,
+.sidebar-bg-dark-green,
+.sidebar-bg-green,
+.sidebar-bg-light-green,
+.sidebar-bg-pink,
+.sidebar-bg-dark-pink,
+.sidebar-bg-blue,
+.sidebar-bg-dark-blue,
+.sidebar-bg-lime {
+  // Color base de texto e íconos (gris claro, no blanco)
+  color: #d1d5db !important; // gray-300
+
+  .menu-link,
+  .menu-heading,
+  .sidebar-icon {
+    color: #d1d5db !important; // gray-300
+    opacity: 1 !important;
+    transition: color 0.2s;
+  }
+
+  // No seleccionada: más claro
+  .menu-link:not(.active):not(.menu-link-active),
+  .menu-heading:not(.active):not(.menu-link-active),
+  .sidebar-icon:not(.active):not(.menu-link-active) {
+    color: #fffefe !important; // gray-200
+    opacity: 0.92 !important;
+  }
+
+  // Seleccionada: más oscuro para contraste
+  .menu-link.active,
+  .menu-link.menu-link-active,
+  .menu-heading.active,
+  .menu-heading.menu-link-active,
+  .sidebar-icon.active,
+  .sidebar-icon.menu-link-active {
+    background-color: rgba(202, 200, 200, 0.262) !important;
+    color: #f5f6f8 !important; // gray-400
+    opacity: 1 !important;
+  }
+
+  // Hover: más blanco para resaltar
+  .menu-link:hover,
+  .menu-heading:hover,
+  .sidebar-icon:hover {
+    color: #fff !important;
+  }
+}
+
+// Tema claro: texto e íconos gray-900 para mejor contraste (cuando NO hay color de fondo especial)
+.app-sidebar:not([class*="sidebar-bg-"]) {
+  color: #d1d5db !important; // gray-300
+
+  .menu-link,
+  .menu-heading,
+  .sidebar-icon {
+    color: #d1d5db !important; // gray-300
+    opacity: 1 !important;
+    transition: color 0.2s;
+  }
+
+  .menu-link:not(.active):not(.menu-link-active),
+  .menu-heading:not(.active):not(.menu-link-active),
+  .sidebar-icon:not(.active):not(.menu-link-active) {
+    color: #cfd2d7 !important; // gray-800
+    opacity: 0.96 !important;
+  }
+
+  .menu-link.active,
+  .menu-link.menu-link-active,
+  .menu-heading.active,
+  .menu-heading.menu-link-active,
+  .sidebar-icon.active,
+  .sidebar-icon.menu-link-active {
+    background-color: #acacac8a !important;
+    color: #071437 !important; // gray-900
+    opacity: 1 !important;
+  }
+
+  .menu-link:hover,
+  .menu-heading:hover,
+  .sidebar-icon:hover {
+    color: #fff !important; // blanco para hover
+  }
+}
+
+// Tema oscuro: menos claro para la opción seleccionada
+[data-bs-theme="dark"] .sidebar-bg-yellow,
+[data-bs-theme="dark"] .sidebar-bg-dark-yellow,
+[data-bs-theme="dark"] .sidebar-bg-orange,
+[data-bs-theme="dark"] .sidebar-bg-dark-green,
+[data-bs-theme="dark"] .sidebar-bg-green,
+[data-bs-theme="dark"] .sidebar-bg-light-green,
+[data-bs-theme="dark"] .sidebar-bg-pink,
+[data-bs-theme="dark"] .sidebar-bg-dark-pink,
+[data-bs-theme="dark"] .sidebar-bg-blue,
+[data-bs-theme="dark"] .sidebar-bg-dark-blue,
+[data-bs-theme="dark"] .sidebar-bg-lime {
+  // Color base de texto e íconos en dark (gris claro)
+  color: #d1d5db !important; // gray-300
+
+  .menu-link,
+  .menu-heading,
+  .sidebar-icon {
+    color: #d1d5db !important; // gray-300
+    opacity: 1 !important;
+    transition: color 0.2s;
+  }
+
+  // No seleccionada: más claro pero no blanco puro
+  .menu-link:not(.active):not(.menu-link-active),
+  .menu-heading:not(.active):not(.menu-link-active),
+  .sidebar-icon:not(.active):not(.menu-link-active) {
+    color: #e5e7eb !important; // gray-200
+    opacity: 0.92 !important;
+  }
+
+  // Seleccionada: más oscuro para contraste
+  .menu-link.active,
+  .menu-link.menu-link-active,
+  .menu-heading.active,
+  .menu-heading.menu-link-active,
+  .sidebar-icon.active,
+  .sidebar-icon.menu-link-active {
+    background-color: rgba(237, 237, 237, 0.418) !important; // azul oscuro translúcido
+    color: #9ca3af !important; // gray-400
+    opacity: 1 !important;
+  }
+
+  // Hover: blanco para resaltar
+  .menu-link:hover,
+  .menu-heading:hover,
+  .sidebar-icon:hover {
+    color: #fff !important;
+  }
+}
+
+/*
+  DÓNDE CAMBIAR COLORES:
+  - Color base de texto/íconos en dark: color: #e6eaf3 !important;
+  - Color de texto/íconos para items NO seleccionados en dark: color: #b6bed7 !important;
+  - Color de texto/íconos para opción seleccionada en dark: color: #fff !important;
+  - Fondo de la opción seleccionada en dark: background-color: rgba(30, 41, 59, 0.85) !important;
+  - Color de texto/íconos en hover en dark: color: #f1f5fa !important;
+*/
+
+// Separador debajo del logo del sidebar: puntitos si no es el sidebar por defecto
+.sidebar-bg-yellow .app-sidebar-logo,
+.sidebar-bg-dark-yellow .app-sidebar-logo,
+.sidebar-bg-orange .app-sidebar-logo,
+.sidebar-bg-dark-green .app-sidebar-logo,
+.sidebar-bg-green .app-sidebar-logo,
+.sidebar-bg-light-green .app-sidebar-logo,
+.sidebar-bg-pink .app-sidebar-logo,
+.sidebar-bg-dark-pink .app-sidebar-logo,
+.sidebar-bg-blue .app-sidebar-logo,
+.sidebar-bg-dark-blue .app-sidebar-logo,
+.sidebar-bg-lime .app-sidebar-logo {
+  border-bottom: 1px dotted #ffffffb8 !important; // línea de puntitos clara
+}
+
+// Selector de color en LayoutBuilder
+.sidebar-color-btn {
+  border: 2px solid transparent;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+
+  // Color del check y fondo del botón activo según tema
+  &.active-yellow {
+    border-color: $app-sidebar-bg-color-yellow !important;
+    background: lighten($app-sidebar-bg-color-yellow, 8%) !important;
+    color: #071437 !important;
+  }
+
+  &.active-dark-yellow {
+    border-color: $app-sidebar-bg-color-dark-yellow !important;
+    background: lighten($app-sidebar-bg-color-dark-yellow, 8%) !important;
+    color: #071437 !important;
+  }
+
+  &.active-orange {
+    border-color: $app-sidebar-bg-color-orange !important;
+    background: lighten($app-sidebar-bg-color-orange, 8%) !important;
+    color: #071437 !important;
+  }
+
+  &.active-dark-green {
+    border-color: $app-sidebar-bg-color-dark-green !important;
+    background: lighten($app-sidebar-bg-color-dark-green, 8%) !important;
+    color: #f8fafd !important;
+  }
+
+  &.active-green {
+    border-color: $app-sidebar-bg-color-green !important;
+    background: lighten($app-sidebar-bg-color-green, 8%) !important;
+    color: #f8fafd !important;
+  }
+
+  &.active-light-green {
+    border-color: $app-sidebar-bg-color-light-green !important;
+    background: lighten($app-sidebar-bg-color-light-green, 8%) !important;
+    color: #071437 !important;
+  }
+
+  &.active-pink {
+    border-color: $app-sidebar-bg-color-pink !important;
+    background: lighten($app-sidebar-bg-color-pink, 8%) !important;
+    color: #f8fafd !important;
+  }
+
+  &.active-dark-pink {
+    border-color: $app-sidebar-bg-color-dark-pink !important;
+    background: lighten($app-sidebar-bg-color-dark-pink, 8%) !important;
+    color: #f8fafd !important;
+  }
+
+  &.active-blue {
+    border-color: $app-sidebar-bg-color-blue !important;
+    background: lighten($app-sidebar-bg-color-blue, 8%) !important;
+    color: #f8fafd !important;
+  }
+
+  &.active-dark-blue {
+    border-color: $app-sidebar-bg-color-dark-blue !important;
+    background: lighten($app-sidebar-bg-color-dark-blue, 8%) !important;
+    color: #f8fafd !important;
+  }
+
+  &.active-lime {
+    border-color: $app-sidebar-bg-color-lime !important;
+    background: lighten($app-sidebar-bg-color-lime, 8%) !important;
+    color: #071437 !important;
+  }
+}
+
+// En modo dark, el check del selector es blanco
+[data-bs-theme="dark"] .sidebar-color-btn.active-yellow,
+[data-bs-theme="dark"] .sidebar-color-btn.active-dark-yellow,
+[data-bs-theme="dark"] .sidebar-color-btn.active-orange,
+[data-bs-theme="dark"] .sidebar-color-btn.active-dark-green,
+[data-bs-theme="dark"] .sidebar-color-btn.active-green,
+[data-bs-theme="dark"] .sidebar-color-btn.active-light-green,
+[data-bs-theme="dark"] .sidebar-color-btn.active-pink,
+[data-bs-theme="dark"] .sidebar-color-btn.active-dark-pink,
+[data-bs-theme="dark"] .sidebar-color-btn.active-blue,
+[data-bs-theme="dark"] .sidebar-color-btn.active-dark-blue,
+[data-bs-theme="dark"] .sidebar-color-btn.active-lime {
+  color: #ffffffd9 !important; // <-- Cambia aquí el color del check del botón seleccionador en dark
+}

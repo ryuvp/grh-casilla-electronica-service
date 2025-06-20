@@ -1,0 +1,116 @@
+/* Estilos para las páginas de error */
+.main-container {
+  display: flex;
+  flex-direction: column; /* Cambiado a columna para apilar en pantallas pequeñas */
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Usar min-height para asegurar que ocupe toda la pantalla */
+  padding: 20px;
+  text-align: center; /* Centrar el contenido en pantallas pequeñas */
+}
+
+/* Sección genérica para todas */
+.section {
+  display: flex;
+  flex-direction: column; /* Apilar elementos en pantallas pequeñas */
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px; /* Espacio entre secciones */
+}
+
+/* Estilo para el logo */
+.logo-section {
+  width: 100%; /* El logo ocupa todo el ancho en pantallas pequeñas */
+  margin-bottom: 20px;
+}
+
+.logo-image {
+  width: 80%; /* El logo ocupa el 80% del ancho de su contenedor */
+  max-width: 350px; /* Limitar el tamaño máximo del logo */
+  height: auto;
+}
+
+/* Estilo para el error 404 y texto */
+.error-section {
+  color: white;
+}
+
+/* Imagen del error */
+.error-image {
+  width: 80%; /* La imagen ocupa el 80% del ancho de su contenedor */
+  max-width: 300px; /* Limitar el tamaño máximo de la imagen */
+  height: auto;
+  margin-bottom: 15px;
+}
+
+/* Estilo para la imagen decorativa */
+.image-section {
+  width: 100%; /* La imagen ocupa todo el ancho en pantallas pequeñas */
+  display: flex;
+  justify-content: center; /* Centrar la imagen */
+  margin-left: 0; /* Eliminar el margen negativo */
+}
+
+.min-image {
+  width: 80%; /* La imagen ocupa el 80% del ancho de su contenedor */
+  max-width: 400px; /* Limitar el tamaño máximo de la imagen */
+  height: auto;
+  object-fit: contain;
+}
+
+/* Ajustes del botón */
+.btn-primary {
+  background-color: rgb(51, 182, 90);
+  color: white;
+  padding: 10px 20px;
+  font-size: 1rem;
+  width: auto; /* El botón se ajusta al contenido */
+  max-width: 200px; /* Limitar el ancho máximo del botón */
+  margin: 0 auto; /* Centrar el botón */
+  border-radius: 5px; /* Añadir un pequeño borde redondeado */
+  display: block;
+}
+
+/* Media query para pantallas más grandes */
+@media (min-width: 800px) {
+  .main-container {
+    flex-direction: row; /* Volver a la disposición horizontal */
+    justify-content: flex-start;
+    align-items: center;
+    text-align: left; /* Alinear el texto a la izquierda */
+    padding: 0 20px;
+  }
+
+  .section {
+    flex-direction: column; /* Volver a la disposición vertical */
+    align-items: flex-start; /* Alinear los elementos a la izquierda */
+    margin-bottom: 0; /* Eliminar el margen inferior */
+  }
+
+  .logo-section {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  .error-section {
+    flex: 1;
+    text-align: right; /* Alinear el texto a la derecha */
+  }
+
+  .image-section {
+    flex: 1;
+    justify-content: flex-start;
+    margin-left: -170px;
+  }
+
+  .min-image {
+    max-width: 800px; /* Volver al tamaño original */
+  }
+
+  .btn-primary {
+    width: 100%; /* Volver al ancho original */
+    margin: 0; /* Eliminar el centrado */
+    display: block;
+    
+  }
+}

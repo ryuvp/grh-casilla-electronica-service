@@ -1,0 +1,10 @@
+.card .card-header {
+    min-height: 45px !important;
+}
+.card .card-body {
+    padding: 1.5rem !important;
+    padding-bottom: 0 !important;
+}
+.el-select__wrapper{
+    min-height: 42px !important;
+}

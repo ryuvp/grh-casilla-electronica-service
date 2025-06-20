@@ -1,0 +1,110 @@
+//
+// Dark Sidebar (used by Dark Sidebar layout only)
+//
+
+[data-kt-app-layout="dark-sidebar"] {
+    .app-sidebar {
+        // Fondo y borde del sidebar en modo oscuro
+        background-color: $app-sidebar-dark-bg-color;
+        border-right: 0;
+
+        // Scrollbar personalizado para el sidebar oscuro
+        .scroll-y,
+        .hover-scroll-overlay-y {
+            @include scrollbar-color(transparent, $app-sidebar-dark-scrollbar-color-hover);
+        }
+
+        // Línea separadora debajo del logo del sidebar
+        .app-sidebar-logo {
+            border-bottom: 1px dashed $app-sidebar-dark-separator-color;
+        }
+
+        // Estilos para botones personalizados dentro del sidebar
+        .btn-custom {
+            @include button-custom-variant($color: #B5B5C3,
+                $icon-color: #B5B5C3,
+                $border-color: null,
+                $bg-color: rgba(63, 66, 84, 0.35),
+                $color-active: #B5B5C3,
+                $icon-color-active: null,
+                $border-color-active: null,
+                $bg-color-active: rgba(63, 66, 84, 0.35));
+        }
+
+        // Menú principal del sidebar
+        .menu {
+            .menu-item {
+
+                // Color de los headings del menú
+                .menu-heading {
+                    color: $app-sidebar-dark-menu-heading-color !important;
+                }
+
+                // Estado por defecto de los links del menú (texto, ícono, bullet, flecha, fondo)
+                @include menu-link-default-state(
+                    $title-color: $gray-900-dark,
+                    $icon-color: $gray-900-dark,
+                    $bullet-color: $gray-900-dark,
+                    $arrow-color: $gray-900-dark,
+                    $bg-color: null,
+                    $all-links: true);
+
+                // Estado "here" (cuando el link representa la página actual)
+                @include menu-link-here-state(
+                    $title-color: $gray-300-dark,
+                    $icon-color: $gray-300-dark,
+                    $bullet-color: $gray-300-dark,
+                    $arrow-color: $gray-300-dark,
+                    $bg-color: null,
+                    $all-links: true);
+
+                // Estado "show" (cuando el menú está expandido)
+                @include menu-link-show-state(
+                    $title-color: $gray-800-dark,
+                    $icon-color: $gray-800-dark,
+                    $bullet-color: $gray-800-dark,
+                    $arrow-color: $gray-800-dark,
+                    $bg-color: null,
+                    $all-links: true);
+
+                // Estado hover (cuando el mouse está sobre el link)
+                @include menu-link-hover-state(
+                    $title-color: $gray-800-dark,
+                    $icon-color: $gray-800-dark,
+                    $bullet-color: $gray-800-dark,
+                    $arrow-color: $gray-800-dark,
+                    $bg-color: null,
+                    $all-links: true);
+
+                // Estado activo (cuando el link está seleccionado)
+                @include menu-link-active-state(
+                    $title-color: $gray-900-dark,
+                    $icon-color: $gray-900-dark,
+                    $bullet-color: $gray-900-dark,
+                    $arrow-color: $gray-300-dark,
+                    $bg-color: $app-sidebar-dark-menu-link-bg-color-active,
+                    $all-links: true);
+            }
+        }
+    }
+}
+
+// Desktop mode: menú desplegable del sidebar oscuro
+@include media-breakpoint-up(lg) {
+    [data-kt-app-layout="dark-sidebar"] {
+        .app-sidebar {
+            .menu-sub-lg-dropdown {
+                background-color: $app-sidebar-dark-bg-color;
+            }
+        }
+    }
+}
+
+// Dark mode: borde derecho del sidebar en modo oscuro
+@include color-mode(dark) {
+    [data-kt-app-layout="dark-sidebar"] {
+        .app-sidebar {
+            border-right: 1px solid $app-sidebar-dark-separator-color;
+        }
+    }
+}

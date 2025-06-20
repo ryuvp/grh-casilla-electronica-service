@@ -1,0 +1,464 @@
+/* 
+ * Estilos comunes para todas las tablas
+ * Este archivo centraliza los estilos para garantizar consistencia
+ */
+
+/* Estilos para el contenedor de la tabla */
+.table-container {
+  position: relative;
+  margin-bottom: 0.5rem;
+  border-radius: 0.65rem;
+  background: var(--kt-body-bg);
+  .table-responsive {
+    max-height: calc(100vh - 300px);
+    min-height: 200px;
+    overflow-y: auto;
+  }
+
+  thead.sticky-thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    backdrop-filter: blur(8px);
+    th {
+      position: sticky;
+      top: 0;
+      background: rgba(var(--kt-header-bg-rgb), 0.85) !important;
+      font-weight: 600;
+      padding: 1rem;
+      border-bottom: 1px solid var(--kt-border-color);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      &.sortable {
+        cursor: pointer;
+        position: relative;
+        &:hover {
+          background-color: var(--kt-gray-200);
+        }
+      }
+    }
+  }
+
+  tbody {
+    tr {
+      cursor: pointer;
+      transition: background-color 0.2s;
+      &:focus {
+        outline: none;
+      }
+      &:hover, &.row-hover {
+        background-color: #e3f2fd !important; // color suave para hover
+      }
+      &.row-active {
+        background-color: #b1b3b348 !important; // color más fuerte para seleccionada
+      }
+      td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--kt-border-color);
+        // Añade margen izquierdo solo al primer td (checkbox)
+        &:first-child {
+          padding-left: 1.5rem;
+        }
+      }
+    }
+  }
+
+  .menu-actions {
+    position: absolute;
+    right: 0;
+    min-width: 140px;
+    background: var(--kt-body-bg);
+    border: 1px solid var(--kt-border-color);
+    border-radius: 0.475rem;
+    box-shadow: var(--kt-menu-shadow);
+    z-index: 105;
+    padding: 0.25rem 0;
+    .menu-item {
+      padding: 0.5rem 0.9rem;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.97rem;
+      border-bottom: 1px solid var(--kt-border-color);
+      background: var(--kt-menu-bg, #fff);
+      color: var(--kt-menu-color, #181c32);
+      transition: background 0.18s, color 0.18s;
+      user-select: none;
+      border-radius: 0.3rem;
+      margin: 0.08rem 0.3rem;
+      display: flex;
+      align-items: center;
+      min-height: 36px;
+      &:hover,
+      &:focus,
+      &.active {
+        background: var(--kt-primary-light, #e7f1ff);
+        color: var(--kt-primary, #0d6efd);
+        outline: none;
+      }
+      &:focus {
+        background: var(--kt-primary-light, #e7f1ff);
+        color: var(--kt-primary, #0d6efd);
+        outline: 2px solid var(--kt-primary, #0d6efd);
+        outline-offset: -1px;
+      }
+      &.active {
+        background: var(--kt-primary-light, #e7f1ff);
+        color: var(--kt-primary, #0d6efd);
+      }
+      &:last-child {
+        border-bottom: none;
+      }
+      .menu-link {
+        display: block;
+        width: 100%;
+        color: inherit;
+        text-decoration: none;
+        &.text-danger:hover {
+          color: var(--kt-danger) !important;
+        }
+      }
+    }
+  }
+}
+
+/* Estilos para el header fijo (sticky) */
+.sticky-thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.bg-thead {
+  background-color: var(--kt-gray-100);
+}
+
+/* Estilos para headers ordenables */
+.sortable {
+  cursor: pointer;
+  position: relative;
+}
+
+.sortable:hover {
+  background-color: var(--kt-gray-200);
+}
+
+.table-sort-asc {
+  background-color: var(--kt-gray-200);
+}
+
+/* Ajuste de tamaño y padding para la tabla */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--kt-gray-400) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--kt-gray-400);
+  border-radius: 6px;
+}
+
+/* Estilos para las celdas */
+.table td, .table th {
+  vertical-align: middle;
+  padding: 0.75rem 1rem;
+}
+
+/* Estilos para filas seleccionables */
+tbody tr {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* Este mixin asegura consistencia visual entre todas las tablas */
+@mixin row-selection-styles {
+  // Selección individual (un solo elemento)
+  tr.table-active {
+    background-color: rgba(var(--kt-gray-200-rgb), 0.5) !important;
+    
+    td {
+      color: inherit !important; // Sin cambio de color para selección individual
+      font-weight: normal;
+    }
+    
+    &:hover {
+      background-color: rgba(var(--kt-gray-300-rgb), 0.15) !important;
+    }
+    
+    box-shadow: inset 3px 0 0 var(--kt-gray-400); // Indicador sutil
+  }
+  
+  // Selección múltiple (dos o más elementos)
+  tr.multi-row-selected {
+    background-color: rgba(241, 65, 108, 0.08) !important;
+    
+    td {
+      color: #dc3545 !important;
+      font-weight: 500;
+    }
+    
+    &:hover {
+      background-color: rgba(241, 65, 108, 0.15) !important;
+    }
+    
+    box-shadow: inset 3px 0 0 #dc3545;
+  }
+}
+
+// Aplicar estilos consistentes
+@include row-selection-styles;
+
+:root {
+  --kt-header-bg-rgb: 255, 255, 255;
+  --kt-menu-bg: #f07070;
+  --kt-menu-color: #181c32;
+  --kt-menu-hover-bg: #f5f8fa;
+  --kt-menu-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+[data-bs-theme="dark"] {
+  --kt-header-bg-rgb: 35, 39, 43;
+  .table-container {
+    .menu-actions {
+      background: var(--kt-menu-bg);
+      border-color: var(--kt-gray-700);
+    }
+  }
+}
+
+.form-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.4rem;
+}
+
+td, th {
+  &.w-50px {
+    width: 50px !important;
+    min-width: 50px !important;
+  }
+}
+
+.menu-actions {
+  min-width: 60px !important;
+  width: auto !important;
+  padding: 0.10rem 0.10rem !important;
+  border-radius: 0.35rem;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+  background: #fff;
+}
+.menu-actions .menu-item {
+  font-size: 0.90rem !important;
+  min-height: 24px !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 0.25rem;
+}
+.menu-actions .menu-item.active,
+.menu-actions .menu-item:hover {
+  background: #f1faff !important;
+}
+.menu-actions .menu-link {
+  padding: 0 !important;
+}
+.action-btn {
+  min-width: 32px !important;
+  height: 28px !important;
+  font-size: 1rem !important;
+  padding: 0.15rem 0.15rem !important;
+  line-height: 1 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.action-menu-btn {
+  min-width: 32px !important;
+  height: 28px !important;
+  font-size: 1rem !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  border-radius: 0.25rem !important;
+  margin-bottom: 0.10rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.action-menu-btn.active,
+.action-menu-btn:hover {
+  background: #f1faff !important;
+}
+.action-btn-edit {
+  min-width: 28px !important;
+  height: 28px !important;
+  font-size: 1rem !important;
+  padding: 0.15rem 0.15rem !important;
+  line-height: 1 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.action-btn-edit:hover,
+.action-btn-edit:focus {
+  background: #e8f6ff !important;
+}
+.action-btn-edit:hover i,
+.action-btn-edit:focus i {
+  color: #009ef7 !important;
+}
+.action-btn-delete {
+  min-width: 28px !important;
+  height: 28px !important;
+  font-size: 1rem !important;
+  padding: 0.15rem 0.15rem !important;
+  line-height: 1 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.action-btn-delete:hover,
+.action-btn-delete:focus {
+  background: #fff5f8 !important;
+}
+.action-btn-delete:hover i,
+.action-btn-delete:focus i {
+  color: #f1416c !important;
+}
+
+/* Estilos para mejorar visibilidad del checkbox */
+:deep(.form-check-input) {
+  width: 1.2rem !important;
+  height: 1.2rem !important;
+  margin-top: 0.25rem !important;
+  border: 1px solid #b5b5c3 !important;
+  background-color: #ffffff !important;
+  cursor: pointer !important;
+}
+
+:deep(.form-check-input:checked) {
+  background-color: #009ef7 !important;
+  border-color: #009ef7 !important;
+}
+
+:deep(.form-check) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.5rem !important;
+}
+.table th:last-child,
+.table td:last-child {
+  padding-right: 1rem !important;
+  padding-left: 0.5rem !important;
+  width: 80px !important;
+  min-width: 80px !important;
+}
+
+
+/* Estilos para filas seleccionadas en modo múltiple - HOVER MÁS NOTORIO */
+tr.multi-row-selected {
+  background-color: rgba(241, 65, 108, 0.08) !important;
+  
+  td {
+    color: #dc3545 !important;
+    font-weight: 500;
+  }
+  
+  /* Hover más notorio */
+  &:hover {
+    background-color: rgba(241, 65, 108, 0.15) !important;
+  }
+  
+  /* Borde de indicación más visible pero sin desplazar contenido */
+  box-shadow: inset 3px 0 0 #dc3545;
+}
+
+/* Estilo para selección individual (sin cambio de color de texto) */
+tr.table-active {
+  background-color: rgba(var(--kt-gray-200-rgb), 0.5) !important;
+  
+  td {
+    color: inherit !important; /* Sin cambio de color para selección individual */
+    font-weight: normal;
+  }
+  
+  &:hover {
+    background-color: rgba(var(--kt-gray-300-rgb), 0.15) !important;
+  }
+  
+  /* Indicador visual sutil del lado izquierdo */
+  box-shadow: inset 3px 0 0 var(--kt-gray-400);
+}
+
+/* Panel de acciones para selección múltiple (restaurado y mejorado) */
+.multi-select-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.475rem;
+  box-shadow: 0 0.1rem 0.7rem rgba(0, 0, 0, 0.05);
+  border-left: 3px solid var(--kt-primary);
+}
+
+.multi-select-counter {
+  font-size: 0.9rem;
+}
+
+.multi-select-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Eliminación completa de cualquier estilo que pueda causar cambios en la estructura */
+.w-25px, .form-check, .form-check-input, .form-check-custom, 
+tr.multi-selected::before, tr::before, tr::after, td::before, td::after {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  position: static !important;
+}
+
+/* Asegurarse de que ningún contenido adicional cause descuadre */
+td, th {
+  box-sizing: border-box !important;
+}
+
+/* Eliminar estilo de posición relativa que podría causar problemas */
+tr {
+  position: static !important;
+}
+
+/* Hover para las filas */
+tbody tr:hover {
+  background-color: rgba(var(--kt-gray-300-rgb), 0.15) !important;
+  cursor: pointer;
+}
+
+/* Estilo especial para la fila actualmente activa */
+tr.row-active {
+  outline: 1px dashed rgba(var(--kt-primary-rgb), 0.3);
+  outline-offset: -1px;
+}
+
+/* Ajuste de cursor en modo selección para indicar que se puede arrastrar */
+tbody tr {
+  cursor: pointer;
+  user-select: none; /* Previene la selección de texto durante el arrastre */
+}
+
+/* Animaciones suaves */
+tr {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}

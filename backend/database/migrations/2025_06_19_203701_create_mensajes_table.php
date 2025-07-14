@@ -18,7 +18,7 @@ return new class extends Migration
             $table->smallInteger('prioridad');
             $table->text('contenido');
             $table->boolean('leido')->default(false);
-            $table->unsignedBigInteger('Usuario_origen_id');
+            $table->unsignedBigInteger('usuario_origen_id');
             $table->unsignedBigInteger('usuario_destino_id');
             $table->date('fecha_envio')->nullable();
             $table->date('fecha_leido')->nullable();

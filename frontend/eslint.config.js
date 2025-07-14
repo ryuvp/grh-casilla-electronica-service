@@ -15,9 +15,15 @@ export default [
         window         : "readonly",
         document       : "readonly",
         setTimeout     : "readonly",
+        setInterval    : "readonly",
+        clearTimeout   : "readonly",
+        clearInterval  : "readonly",
         localStorage   : "readonly",
         sessionStorage : "readonly",
         hashMd5        : "readonly",
+        __dirname      : "readonly",
+        URL            : "readonly",
+        FormData       : "readonly",
         // Agrega aquí cualquier otra global que uses
       }
     },

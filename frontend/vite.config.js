@@ -12,10 +12,13 @@ export default defineConfig({
     },
   },
   server : {
-    host  : '0.0.0.0',
-    port  : 5175,
+    host  : '0.0.0.0', // OBLIGATORIO dentro del contenedor
+    port  : 5178,
     watch : {
       usePolling : true,
-    }
+    },
+    /* hmr : {
+      host : 'casilla.local.test',
+    }, */
   },
 })

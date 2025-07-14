@@ -2,22 +2,25 @@
 
 namespace App\Models;
 
-use App\Filters\Filterable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Archivo extends Model
 {
-    use Filterable;
+    use HasFactory;
+
     protected $fillable = [
-        'mensaje_id',
-        'archivo_id',
+        'nombre',
+        'url',
+        'tipo',
     ];
-    protected $filters =[
-        'mensaje_id',
-        'archivo_id',
-    ];
+
     public static $validables = [
-        'mensaje_id' => 'required|unsignedBigInteger',
-        'archivo_id' => 'required|unsignedBigInteger',
-    ]; 
+        'archivo' => 'required|file|max:10240',
+    ];
+
+    public function mensajes()
+    {
+        return $this->belongsToMany(Mensaje::class, 'adjuntos')->withTimestamps()->withPivot('id');
+    }
 }

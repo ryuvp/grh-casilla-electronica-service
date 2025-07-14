@@ -6,6 +6,7 @@ import App from './App.vue';
 import router from './router';
 import { createPinia } from 'pinia';
 
+
 //imports for app initialization
 import { initApexCharts } from "@/core/plugins/apexcharts";
 import { initInlineSvg } from "@/core/plugins/inline-svg";

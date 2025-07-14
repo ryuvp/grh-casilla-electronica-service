@@ -19,11 +19,14 @@
         alt="Error"
       />
       
-      <div class="fw-semibold fs-5 text-white mb-2"> <!-- Cambié a text-white -->
-        <center>
+      <div class="fw-semibold fs-5 text-white mb-2">
+        <!-- Reemplazado el <center> por un div con clase text-center -->
+        <div class="text-center">
           <h6>¡Algo salió mal!</h6>
-        <p>Por favor intentar de nuevo más tarde.</p></center>
+          <p>Por favor intenta de nuevo más tarde.</p>
+        </div>
       </div>
+      
       <router-link to="/" class="btn btn-lg btn-primary mt-3">
         Volver al Inicio
       </router-link>
@@ -50,8 +53,8 @@ import { themeMode } from "@/layouts/default-layout/config/helper";
 
 
 export default defineComponent({
-  name: "error-500",
-  components: {},
+  name       : "Error500",
+  components : {},
   setup() {
     const storeBody = useBodyStore();
 
@@ -66,8 +69,8 @@ export default defineComponent({
 
       storeBody.addBodyClassname("bg-body");
       storeBody.addBodyAttribute({
-        qualifiedName: "style",
-        value: ` 
+        qualifiedName : "style",
+        value         : ` 
           background-image: url("${bgImage}");
           background-size: cover;
           background-position: center;
@@ -84,7 +87,7 @@ export default defineComponent({
   },
 });
 </script>
+
 <style scoped>
 @import "@/assets/css/error-pages.css";
 </style>
-

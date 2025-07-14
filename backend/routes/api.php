@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MensajeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('remoteauth')->group(function () {
+    Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);
+    Route::get('/mensajes/enviados', [MensajeController::class, 'bandejaEnviados']);
+    Route::post('/mensajes', [MensajeController::class, 'store']);
+    Route::get('/mensajes/{mensaje}', [MensajeController::class, 'show']);
+    Route::post('/mensajes/{mensaje}/leido', [MensajeController::class, 'marcarLeido']);
 });

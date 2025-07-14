@@ -10,15 +10,36 @@ const routes = [
     path      : '/',
     name      : 'Home',
     component : () => import("@/layouts/gestion/DefaultLayoutGestion.vue"),
-    //redirect  : '/dashboard',
+    redirect  : '/bandeja',
     children  : [
+      {
+        path      : 'bandeja',
+        name      : 'Bandeja',
+        component : () => import("@/views/Bandeja/Bandeja.vue"),
+        // .catch(() =>
+        //   import("@/views/SystemError/Error500.vue")
+        // ),
+        meta      : {
+          requiresAuth : true,
+          pageTitle    : "Bandeja de Entrada",
+          breadcrumbs  : ["Bandeja"],
+        },
+      },
+      {
+        path      : 'enviados',
+        name      : 'Enviados',
+        component : () => import("@/views/Enviados/Enviados.vue"),
+        meta      : {
+          requiresAuth : true,
+          pageTitle    : "Bandeja de Enviados",
+          breadcrumbs  : ["Enviados"],
+        },
+      },
       {
         path      : 'dashboard',
         name      : 'Dashboard',
-        component : () => import("@/views/Dashboard.vue").catch(() =>
-          import("@/views/SystemError/Error500.vue")
-        ),
-        meta : {
+        component : () => import("@/views/Dashboard.vue"),
+        meta      : {
           requiresAuth : true,
           pageTitle    : "Dashboard",
           breadcrumbs  : ["Dashboards"],
@@ -27,6 +48,8 @@ const routes = [
       
     ],
   },
+  //ruta de prueba para el editor de texto
+
 
   // Layout para páginas de sistema/error
   {
@@ -87,7 +110,7 @@ router.beforeEach((to, from, next) => {
   configStore.resetLayoutConfig();
 
   // Rutas que no requieren validación de permisos
-  const publicRoutes = ['Home', 'Dashboard', '403', '404', '500', 'system', 'Correlativos', 'TiposDocumentos', 'TiposTramite', 'Plantillas'];
+  const publicRoutes = ['Home', '403', '404', '500', 'system', 'Correlativos', 'TiposDocumentos', 'TiposTramite', 'Plantillas'];
 
   const noRequierePermiso = publicRoutes.includes(to.name) || to.path.startsWith('/system');
 

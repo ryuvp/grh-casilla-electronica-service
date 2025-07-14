@@ -16,7 +16,7 @@ class Mensaje extends Model
         'fecha_envio',
         'fecha_leido',
     ];
-    protected $filters =[
+    protected $filters = [
         'asunto',
         'prioridad',
         'contenido',
@@ -32,5 +32,10 @@ class Mensaje extends Model
         'ususario_destino_id' => 'required|unsignedBigInteger|max:100',
         'fecha_envio' => 'required|date|max:100',
         'fecha_leido' => 'required|date|max:100',
-    ]; 
+    ];
+
+    public function archivos()
+    {
+        return $this->belongsToMany(Archivo::class, 'adjuntos')->withTimestamps()->withPivot('id');
+    }
 }

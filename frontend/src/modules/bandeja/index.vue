@@ -1,0 +1,106 @@
+<template>
+  <div ref="containerRef" class="d-flex position-relative" style="height: 100%;">
+
+    <!-- Panel izquierdo (Filtro + Lista) -->
+    <div ref="leftPanel" :style="{ width: leftWidth + 'px' }" class="border-end pe-3 bg-white">
+      <Filtro
+        :filtro="filtro"
+        :orden="orden"
+        @update-filtro="filtro = $event"
+        @update-orden="orden = $event"
+      />
+      <Lista :mensajes="mensajesFiltrados" :selected="selected" @seleccionar="seleccionarMensaje" />
+    </div>
+
+    <!-- Separador -->
+    <div
+      ref="resizer"
+      class="resizer"
+      @mousedown="startResizing"
+    ></div>
+
+    <!-- Panel derecho (Contenido) -->
+    <div class="flex-grow-1 ps-3 bg-white">
+      <Contenido :mensaje="selected" @cerrar="selected = null" />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onBeforeUnmount, computed, onMounted } from 'vue'
+import Filtro from './Filtro.vue'
+import Lista from './Lista.vue'
+import Contenido from './Contenido.vue'
+
+import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
+const store = useMensajesStore()
+
+onMounted(async () => {
+  await store.fetchMensajes('entrada');
+  console.log(store.mensajes);  // Cargar mensajes de la bandeja de entrada
+});
+
+const selected = ref(null)
+
+const filtro = ref('')
+const orden = ref('fecha')
+
+const mensajesFiltrados = computed(() => {
+  return store.mensajes
+    .filter(m => m.asunto.toLowerCase().includes(filtro.value.toLowerCase()))
+    .sort((a, b) => {
+      if (orden.value === 'fecha') return new Date(b.fecha) - new Date(a.fecha)
+      if (orden.value === 'asunto') return a.asunto.localeCompare(b.asunto)
+      return 0
+    })
+})
+
+function seleccionarMensaje(mensaje) {
+  selected.value = mensaje
+
+  if (!mensaje.leido) {
+    store.marcarLeido(mensaje.id);
+  }
+}
+
+// Resize logic
+const containerRef = ref(null)
+const leftPanel = ref(null)
+const resizer = ref(null)
+const leftWidth = ref(400) // ancho inicial en px
+
+let isResizing = false
+
+function startResizing() {
+  isResizing = true
+  document.addEventListener('mousemove', resize)
+  document.addEventListener('mouseup', stopResizing)
+}
+
+function resize(e) {
+  if (!isResizing || !containerRef.value) return
+  const containerLeft = containerRef.value.getBoundingClientRect().left
+  const newWidth = e.clientX - containerLeft
+  if (newWidth >= 200 && newWidth <= 800) {
+    leftWidth.value = newWidth
+  }
+}
+
+function stopResizing() {
+  isResizing = false
+  document.removeEventListener('mousemove', resize)
+  document.removeEventListener('mouseup', stopResizing)
+}
+
+onBeforeUnmount(() => stopResizing())
+</script>
+
+<style scoped>
+.resizer {
+  width: 6px;
+  cursor: col-resize;
+  background-color: #e0e0e0;
+  position: relative;
+  z-index: 10;
+}
+</style>

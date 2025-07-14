@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Support\RemoteAuth;
+
 
 class AppServiceProvider extends ServiceProvider
 {

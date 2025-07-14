@@ -1,7 +1,7 @@
 {
     "extends": "@vue/tsconfig/tsconfig.json",
-    "include": ["env.d.ts", "src/**/*"],
-    "exclude": ["node_modules"],
+    "include": ["env.d.ts"],
+    "exclude": ["node_modules", "src/**/*"],
     "compilerOptions": {
       "baseUrl": ".",
       "paths": {

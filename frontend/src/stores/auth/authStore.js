@@ -143,43 +143,43 @@ const useAuthStore = defineStore('auth', {
   },
   actions : {
     async logout() {
-      try {
-        const token = JwtService.getToken();
-        if (token) {
-          await ApiService.post('/logout', {}, {
-            headers : { Authorization: `Bearer ${token}` }
-          });
-        }
-      } catch (error) {
-        console.error('Error during logout:', error);
-      } finally {
-        // Limpiar todo
-        JwtService.destroyToken();
-        JwtService.destroyUserLogged();       
-        // Limpiar el estado
-        this.$patch({
-          isAuthenticated : false,
-          userData        : null
-        });
+      // try {
+      //   const token = JwtService.getToken();
+      //   if (token) {
+      //     await ApiService.post('/logout', {}, {
+      //       headers : { Authorization: `Bearer ${token}` }
+      //     });
+      //   }
+      // } catch (error) {
+      //   console.error('Error during logout:', error);
+      // } finally {
+      //   // Limpiar todo
+      //   JwtService.destroyToken();
+      //   JwtService.destroyUserLogged();       
+      //   // Limpiar el estado
+      //   this.$patch({
+      //     isAuthenticated : false,
+      //     userData        : null
+      //   });
         
-        localStorage.clear();
-        sessionStorage.clear();
+      //   localStorage.clear();
+      //   sessionStorage.clear();
         
-        // Asegurar que se borren todas las cookies de sesión
-        document.cookie.split(";").forEach(function(c) {
-          document.cookie = c
-            .replace(/^ +/, "")
-            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-        });
-        //funcion para enviar msj al padre para cerrar su sesion
-        if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type: 'LOGOUT' }, 'localhost:5174');
-    }
-        // Redirigir al login de la pagina de origen
-        window.location.href = import.meta.env.VITE_APP_URL + '/login';
+      //   // Asegurar que se borren todas las cookies de sesión
+      //   document.cookie.split(";").forEach(function(c) {
+      //     document.cookie = c
+      //       .replace(/^ +/, "")
+      //       .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      //   });
+      //   //funcion para enviar msj al padre para cerrar su sesion
+      //   if (window.opener && !window.opener.closed) {
+      //     window.opener.postMessage({ type: 'LOGOUT' }, import.meta.env.VITE_AUTH_ORIGIN);
+      //   }
+      //   // Redirigir al login de la pagina de origen
+      //   //window.location.href = import.meta.env.VITE_AUTH_ORIGIN + '/login';
 
 
-      }
+      // }
     },
     setAuthReady(status) {
       this.isAuthReady = status;

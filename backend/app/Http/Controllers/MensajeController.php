@@ -12,64 +12,73 @@ use Illuminate\Http\Response;
 
 class MensajeController extends Controller
 {
+    protected $user;
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            /** @noinspection PhpUndefinedClassInspection */
+            $this->user = RemoteAuth::user();
+
+            if (!$this->user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Usuario no autenticado'
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+            return $next($request);
+        });
+    }
+
     /**
-     * Bandeja de entrada: mensajes recibidos por el usuario autenticado.
+     * Bandeja de entrada: mensajes recibidos.
      */
     public function bandejaEntrada(Request $request)
     {
-        $user = RemoteAuth::user();
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Usuario no autenticado'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $mensajes = Mensaje::where('usuario_destino_id', $user['id'])
-            ->with('archivos')
+        $mensajes = Mensaje::where('usuario_destino_id', $this->user['id'])
+            ->with('adjuntos')
             ->filter($request)
             ->get();
 
         return MensajeResource::collection($mensajes);
     }
 
+    /**
+     * Bandeja de salida: mensajes enviados.
+     */
     public function bandejaEnviados(Request $request)
     {
-        $user = RemoteAuth::user();
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Usuario no autenticado'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $mensajes = Mensaje::where('usuario_origen_id', $user['id'])
-            ->with('archivos')
+        $mensajes = Mensaje::where('usuario_origen_id', $this->user['id'])
+            ->with('adjuntos')
             ->filter($request)
             ->get();
 
         return MensajeResource::collection($mensajes);
     }
 
+    /**
+     * Mostrar mensaje específico (si pertenece al usuario).
+     */
     public function show(Mensaje $mensaje)
     {
-        $user = RemoteAuth::user();
-        if (!$user || ($mensaje->usuario_origen_id !== $user['id'] && $mensaje->usuario_destino_id !== $user['id'])) {
+        if (
+            $mensaje->usuario_origen_id !== $this->user['id'] &&
+            $mensaje->usuario_destino_id !== $this->user['id']
+        ) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
-        return new MensajeResource($mensaje->load('archivos'));
+        return new MensajeResource($mensaje->load('adjuntos'));
     }
 
-
     /**
-     * Almacena un nuevo mensaje.
+     * Guardar un nuevo mensaje y sus archivos adjuntos.
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), Mensaje::$validables + [
-            'archivo_ids'   => 'nullable|array',
-            'archivo_ids.*' => 'exists:archivos,id',
+            'archivo_ids' => 'nullable|array',
+            'archivo_ids.*' => 'integer|distinct'
         ]);
 
         if ($validator->fails()) {
@@ -80,16 +89,7 @@ class MensajeController extends Controller
         }
 
         $validated = $validator->validated();
-
-        $user = RemoteAuth::user();
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Usuario no autenticado'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $validated['usuario_origen_id'] = $user['id'];
+        $validated['usuario_origen_id'] = $this->user['id'];
         $validated['fecha_envio'] = now();
 
         try {
@@ -97,36 +97,37 @@ class MensajeController extends Controller
 
             $mensaje = Mensaje::create($validated);
 
+            // Si existen archivos, guardarlos en la tabla adjuntos
             if (!empty($validated['archivo_ids'])) {
-                $mensaje->archivos()->attach($validated['archivo_ids']);
+                $idsArchivos = collect($validated['archivo_ids'])
+                    ->map(fn($archivo_id) => [
+                        'mensaje_id' => $mensaje->id,
+                        'archivo_id' => $archivo_id,
+                    ])->toArray();
+
+                DB::table('adjuntos')->insert($idsArchivos);
             }
 
             DB::commit();
 
-            return new MensajeResource($mensaje->load('archivos'));
+            return new MensajeResource($mensaje->load('adjuntos'));
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error al crear el mensaje: ' . $e->getMessage()
+                'message' => 'Error al guardar el mensaje: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
+
     /**
-     * Marcar como leído.
+     * Marcar un mensaje como leído.
      */
     public function marcarLeido(Request $request, Mensaje $mensaje)
     {
-        $user = RemoteAuth::user();
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Usuario no autenticado'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        if ($user['id'] !== $mensaje->usuario_destino_id) {
+        if ($this->user['id'] !== $mensaje->usuario_destino_id) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
@@ -142,20 +143,11 @@ class MensajeController extends Controller
     }
 
     /**
-     * Actualiza un mensaje.
+     * Actualizar un mensaje (sólo si es el remitente).
      */
     public function update(Request $request, Mensaje $mensaje)
     {
-        $user = RemoteAuth::user();
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Usuario no autenticado'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        // Verifica si el mensaje es del usuario autenticado
-        if ($mensaje->usuario_origen_id !== $user['id']) {
+        if ($mensaje->usuario_origen_id !== $this->user['id']) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
@@ -172,7 +164,8 @@ class MensajeController extends Controller
             DB::beginTransaction();
             $mensaje->update($validator->validated());
             DB::commit();
-            return new MensajeResource($mensaje);
+
+            return new MensajeResource($mensaje->load('archivos'));
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -183,19 +176,11 @@ class MensajeController extends Controller
     }
 
     /**
-     * Elimina un mensaje.
+     * Eliminar un mensaje.
      */
     public function destroy(Mensaje $mensaje)
     {
-        $user = RemoteAuth::user();
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Usuario no autenticado'
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        if ($mensaje->usuario_origen_id !== $user['id']) {
+        if ($mensaje->usuario_origen_id !== $this->user['id']) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
@@ -203,6 +188,7 @@ class MensajeController extends Controller
             DB::beginTransaction();
             $mensaje->delete();
             DB::commit();
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Mensaje eliminado correctamente.'

@@ -1,4 +1,5 @@
-import { resolveRelations, exportRelations, globalExportRelations, areObjEquals } from "./helpers"
+//import { resolveRelations, exportRelations, globalExportRelations, areObjEquals } from "./helpers"
+import { areObjEquals } from "./helpers";
 // import {  reactive, computed } from 'vue';
 
 
@@ -33,6 +34,8 @@ export default function createModelStore (model, state = {}, getters = {}, actio
       maxRelationsResolve : config.maxRelationsResolve,
       relations           : config.relations,
       syncStatus          : config.sync,
+      paginate            : config.paginate,  
+      pagination          : config.pagination,
       selectedStatus      : false,
       timeOutAsinc        : null,
       check               : check,
@@ -46,7 +49,7 @@ export default function createModelStore (model, state = {}, getters = {}, actio
       // Getter para obtener el nombre del objeto seleccionado
       name    : ({ items, key }) => (id) => {
         const item = items.find(d => d[key] === id)
-        return item ? `${item[model.getNameAttribute()]}` : null
+        return item ? item[model.getNameAttribute()] : null
       },
       // Getter para obtener el objeto seleccionado
       find : ({ items, key }) => (id, level = 1) => {
@@ -65,6 +68,7 @@ export default function createModelStore (model, state = {}, getters = {}, actio
       selected : ({ itemSelected, selectedStatus }) => {
         return selectedStatus ? resolveR(itemSelected) : selectedStatus
       },
+      ...getters
     },
 
     actions : {
@@ -126,16 +130,27 @@ export default function createModelStore (model, state = {}, getters = {}, actio
         })
       },
       // Action para obtener la lista de objetos de el servidor
-      get (params = {}) {
+      async get (params = {}, pagination={}) {
       //var commit = store.commit
         const action = this.syncStatus ? 'sync' : 'setItems';
-        if (!model.saved()) {
+        
+        if (model.paginate) {
+          params = {...params, ...Object.assign({
+            page : this.pagination.current_page, per_page : this.pagination.per_page
+          }, pagination) };
+        }
+        if (!(await model.saved(params))) {
           return new Promise((resolve, reject) => {
+            console.log('get', params)
             model.getAll(params).then(response => {
               const data = response.data;
               model.save(data.data);
               this[action](data.data);
+              // eslint-disable-next-line no-unused-vars
+              const { data: _, ...pagination } = data;
+              this.pagination = Object.assign(this.pagination, pagination);
               this.afterGet();
+              console.log('get', this)
               resolve(response);
             }).catch(reject);
           })
@@ -145,12 +160,24 @@ export default function createModelStore (model, state = {}, getters = {}, actio
         }
       },
 
+      async getPage (params = {}, pagination={}) {
+        //var commit = store.commit
+        if (model.paginate) {
+          params = {...params, ...Object.assign({
+            page : this.pagination.current_page, per_page : this.pagination.per_page
+          }, pagination) };
+        }
+        //console.log('getPage paginatios', this.pagination)
+        //console.log('getPage', params)
+        return this.get(params)
+
+      },
       // Action para obtener la lista de algunos objetos de el servidor sin consultar ni almacenar en el localstorage
       getSome( params = {}){
         //var commit = store.commit
         return new Promise((resolve, reject) => {
           model.getAll(params).then(response => {
-            this.sync(response.data.data);
+            this.sync(response.data);
             this.afterGet();
             resolve(response);
           }).catch(reject);
@@ -163,7 +190,7 @@ export default function createModelStore (model, state = {}, getters = {}, actio
           // divide y vencceras
           this.setItems([]);
           model.getAll(params).then(response => {
-            this.setItems(response.data.data);
+            this.setItems(response.data);
             this.afterGet();
             resolve(response);
           }).catch(reject);
@@ -294,6 +321,9 @@ export default function createModelStore (model, state = {}, getters = {}, actio
           this.items.push(item)
         }
       },
+      setPageSize(pageSize){
+        this.pagination.per_page = pageSize
+      },
       
       /********* MUTACIONES COMO ACTIONS */
       // Mutation para setear el listado de objetos
@@ -316,6 +346,7 @@ export default function createModelStore (model, state = {}, getters = {}, actio
           this.items.push(items)
         }
       },
+      ...actions
     }
   };
 }

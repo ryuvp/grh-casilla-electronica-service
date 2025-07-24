@@ -12,7 +12,8 @@ class Mensaje extends Model
         'asunto',
         'prioridad',
         'contenido',
-        'ususario_origen_id',
+        'usuario_origen_id',
+        'usuario_destino_id',
         'fecha_envio',
         'fecha_leido',
     ];
@@ -25,17 +26,15 @@ class Mensaje extends Model
         'fecha_leido',
     ];
     public static $validables = [
-        'asunto' => 'required|string|max:255',
-        'prioridad' => 'required|smallInteger|max:255',
-        'contenido' => 'required|text|max:100',
-        'ususario_origen_id' => 'required|unsignedBigInteger|max:100',
-        'ususario_destino_id' => 'required|unsignedBigInteger|max:100',
-        'fecha_envio' => 'required|date|max:100',
-        'fecha_leido' => 'required|date|max:100',
+        'asunto'               => 'required|string|max:255',
+        'prioridad'            => 'nullable|integer|between:1,5',
+        'contenido'            => 'required|string',
+        'usuario_destino_id'   => 'required|integer',
+        'fecha_envio'          => 'nullable|date',
+        'leido'                => 'nullable|boolean',
     ];
-
-    public function archivos()
+    public function adjuntos()
     {
-        return $this->belongsToMany(Archivo::class, 'adjuntos')->withTimestamps()->withPivot('id');
+        return $this->hasMany(Adjunto::class, 'mensaje_id');
     }
 }

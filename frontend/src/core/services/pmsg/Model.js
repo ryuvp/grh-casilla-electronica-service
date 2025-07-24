@@ -21,7 +21,9 @@ export default class Model {
       selectable          : false,// Condicional para definir si el objeto es seleccionable
       default             : {},// Valor del objeto por defecto,
       params              : { modeljs: true },// Aquí se configuran parámetros adicionales a enviar en los request excepto DELETE
-      modelGetters        : {}// Aquí se configuran parámetros adicionales a enviar en los request excepto DELETE
+      modelGetters        : {},// Aquí se configuran parámetros adicionales a enviar en los request excepto DELETE
+      paginate            : false,// Condicional para definir si el modelo tiene paginación
+      pagination          : {current_page: 1, per_page: 10},// Configuración de paginación
     }
     //config.hasKey=config.hasKey!=undefined?config.hasKey:config.key!=undefined
     defaultValues = Object.assign(defaultValues, config)
@@ -44,17 +46,19 @@ export default class Model {
     this.default = defaultValues.default
     this.params = defaultValues.params
     this.modelGetters = defaultValues.modelGetters
+    this.paginate = defaultValues.paginate
+    this.pagination = defaultValues.pagination
     this.state = {}
     this.getters = {}
     this.actions = {}
   }
 
   get(url = '', params = {}) {
+    console.log('entro!!')
     params = Object.assign(params, this.params)
     url = this.route + '/' + url
-    return this.instance.get(url, {
-      params : params,
-    })
+    console.log('get', url, params)
+    return this.instance.get(url, params)
   }
 
   post(url = '', params = {}) {
@@ -66,9 +70,8 @@ export default class Model {
   // Función para obtener el listado de Objetos de la base de datos
   getAll(params = {}) {
     params = Object.assign(params, this.params)
-    return this.instance.get(this.route, {
-      params : params,
-    })
+    console.log('getAll', params)
+    return this.instance.get(this.route, params)
   }
 
   // Función para crear un objeto en la base de datos
@@ -107,10 +110,10 @@ export default class Model {
   }
 
   // Función para verificar si la lista esta guardada en el local storage
-  saved() {
+  async saved(params = {}) {
     if (this.store) {
       if (this.hash) {
-        this.verificarHash()
+        await this.verificarHash(params)
       }
       return !!localStorage.getItem(this.alias)
     } else
@@ -135,16 +138,9 @@ export default class Model {
   }
 
   // Función para verificar si el hash coincide con el que viene en la vista
-  verificarHash() {
-    if ((hashMd5[this.alias] === undefined && !!localStorage.getItem(this.alias))) {
-      localStorage.removeItem(this.alias)
-    }
-    /*console.log(this.alias )
-    console.log(hashMd5[this.alias] )
-    if (!!localStorage.getItem(this.alias)) {
-      console.log(md5(localStorage.getItem(this.alias)))
-    }*/
-    if (!!localStorage.getItem(this.alias) && hashMd5[this.alias] !== md5(localStorage.getItem(this.alias))) {
+  async verificarHash (params = {}) {
+    let hashMd5 = await this.getAll({...params, hash: true})
+    if (!!localStorage.getItem(this.alias) && hashMd5.data !== md5(localStorage.getItem(this.alias))) {
       localStorage.removeItem(this.alias)
     }
   }
@@ -197,7 +193,9 @@ export default class Model {
 
         }
       }),
-      sync : this.sync
+      sync       : this.sync,
+      paginate   : this.paginate,
+      pagination : this.pagination,
     }
   }
 

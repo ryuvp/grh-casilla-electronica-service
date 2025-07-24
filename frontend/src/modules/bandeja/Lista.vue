@@ -1,10 +1,10 @@
 <template>
   <ul class="list-group list-group-flush">
     <li
-      v-for="msg in mensajes"
+      v-for="msg in props.mensajes"
       :key="msg.id"
       class="list-group-item d-flex justify-content-between align-items-start py-3"
-      :class="{ active: selected?.id === msg.id }"
+      :class="{ active: props.selected?.id === msg.id }"
       style="cursor: pointer;"
       @click="$emit('seleccionar', msg)"
     >
@@ -18,20 +18,30 @@
         </div>
       </div>
       <div class="text-muted small">
-        {{ formatFecha(msg.fecha_envio) }}
+        {{ formatDate(msg.fecha_envio) }}
       </div>
     </li>
   </ul>
 </template>
 
 <script setup>
-import { defineProps } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-defineProps(['mensajes', 'selected'])
+const props = defineProps({
+  mensajes : {
+    type     : Array,
+    required : true
+  },
+  selected : {
+    type    : Object,
+    default : null
+  }
+})
 
-function formatFecha(fechaStr) {
+defineEmits(['seleccionar'])
+
+function formatDate(fechaStr) {
   if (!fechaStr) return ''
   const fecha = new Date(fechaStr)
   return format(fecha, 'dd/MM/yyyy HH:mm', { locale: es })

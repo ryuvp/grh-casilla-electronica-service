@@ -81,10 +81,6 @@ const mensajesFiltrados = computed(() => {
 
 function seleccionarMensaje(mensaje) {
   selected.value = mensaje
-
-  if (!mensaje.leido) {
-    store.marcarLeido(mensaje.id);
-  }
 }
 
 function nuevoMensaje() {

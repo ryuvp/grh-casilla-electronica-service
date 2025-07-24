@@ -24,6 +24,8 @@ export default [
         __dirname      : "readonly",
         URL            : "readonly",
         FormData       : "readonly",
+        Blob           : "readonly",
+        File           : "readonly",
         // Agrega aquí cualquier otra global que uses
       }
     },

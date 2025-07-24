@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import createApiService from '@/core/services/ApiService'
+import { useFileStore } from '@/stores/files/filesStore'
 
-// API configurada
 const Apiservice = createApiService(import.meta.env.VITE_API_URL || 'http://localhost:8087/api')
 
 export const useMensajesStore = defineStore('mensajes', {
@@ -9,13 +9,13 @@ export const useMensajesStore = defineStore('mensajes', {
     mensajes            : [],
     mensajeSeleccionado : null,
     default             : {
-      id           : null,
-      asunto       : '',
-      contenido    : '',
-      destinatario : '',
-      remitente    : '',
-      fecha        : '',
-      leido        : false,
+      id                 : null,
+      prioridad          : 1,
+      asunto             : '',
+      contenido          : '',
+      usuario_destino_id : '',
+      fecha_envio        : '',
+      leido              : false,
     },
     loading : false,
     error   : null,
@@ -30,9 +30,15 @@ export const useMensajesStore = defineStore('mensajes', {
     async fetchMensajes(type = 'entrada') {
       this.loading = true
       this.error = null
+
       try {
         const response = await Apiservice.get(`/mensajes/${type}`)
-        this.mensajes = response.data.data
+        this.mensajes = response.data.data.map(m => ({
+          ...m,
+          archivos         : [],
+          archivosCargados : false,
+        }))
+        await this.cargarArchivosDeMensajes()
       } catch (error) {
         console.error('Error al obtener los mensajes:', error)
         this.error = error
@@ -41,10 +47,35 @@ export const useMensajesStore = defineStore('mensajes', {
       }
     },
 
+    async cargarArchivosDeMensajes() {
+      const fileStore = useFileStore()
+
+      await Promise.allSettled(
+        this.mensajes.map(async (mensaje) => {
+          if (mensaje.archivosCargados || !mensaje.archivo_ids?.length) return
+
+          const archivos = await Promise.allSettled(
+            mensaje.archivo_ids.map(id => fileStore.mostrarArchivo(id))
+          )
+
+          mensaje.archivos = archivos
+            .filter(r => r.status === 'fulfilled')
+            .map(r => r.value)
+
+          mensaje.archivosCargados = true
+        })
+      )
+    },
+
     async createMensaje(data) {
       try {
         const response = await Apiservice.post('/mensajes', data)
-        this.mensajes.push(response.data.data)
+        const nuevo = {
+          ...response.data.data,
+          archivos         : [],
+          archivosCargados : false,
+        }
+        this.mensajes.push(nuevo)
         return response.data
       } catch (error) {
         console.error('Error al crear el mensaje:', error)
@@ -54,13 +85,17 @@ export const useMensajesStore = defineStore('mensajes', {
 
     async marcarLeido(id) {
       try {
-        const response = await Apiservice.post(`/mensajes/${id}/leido`);
-        const index = this.mensajes.findIndex(m => m.id === id);
+        const response = await Apiservice.post(`/mensajes/${id}/leido`)
+        const index = this.mensajes.findIndex(m => m.id === id)
         if (index !== -1) {
-          this.mensajes[index] = response.data.data; // actualiza con info nueva
+          this.mensajes[index] = {
+            ...response.data.data,
+            archivos         : this.mensajes[index].archivos,
+            archivosCargados : this.mensajes[index].archivosCargados,
+          }
         }
       } catch (error) {
-        console.error('Error al marcar como leído:', error);
+        console.error('Error al marcar como leído:', error)
       }
     },
 
@@ -69,7 +104,11 @@ export const useMensajesStore = defineStore('mensajes', {
         const response = await Apiservice.put(`/mensajes/${id}`, data)
         const index = this.mensajes.findIndex(m => m.id === id)
         if (index !== -1) {
-          this.mensajes[index] = response.data.data
+          this.mensajes[index] = {
+            ...response.data.data,
+            archivos         : this.mensajes[index].archivos,
+            archivosCargados : this.mensajes[index].archivosCargados,
+          }
         }
         return response.data
       } catch (error) {

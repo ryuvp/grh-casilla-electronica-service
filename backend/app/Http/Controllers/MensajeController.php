@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Http;
 
 class MensajeController extends Controller
 {
@@ -16,18 +17,7 @@ class MensajeController extends Controller
 
     public function __construct()
     {
-        $this->middleware(function ($request, $next) {
-            /** @noinspection PhpUndefinedClassInspection */
-            $this->user = RemoteAuth::user();
-
-            if (!$this->user) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Usuario no autenticado'
-                ], Response::HTTP_UNAUTHORIZED);
-            }
-            return $next($request);
-        });
+        // Obtener el usuario autenticado
     }
 
     /**
@@ -35,7 +25,7 @@ class MensajeController extends Controller
      */
     public function bandejaEntrada(Request $request)
     {
-        $mensajes = Mensaje::where('usuario_destino_id', $this->user['id'])
+        $mensajes = Mensaje::where('usuario_destino_id', $request->user['id'])
             ->with('adjuntos')
             ->filter($request)
             ->get();
@@ -199,6 +189,26 @@ class MensajeController extends Controller
                 'status' => 'error',
                 'message' => 'Error al eliminar el mensaje: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+    private function consultarUsuarios(array $ids, Request $request)
+    {
+        if (empty($ids)) return [];
+
+        try {
+            $queryParams = [
+                'searchField' => 'id',
+                'search' => $ids,
+            ];
+
+            $token = $request->bearerToken();
+            $response = Http::withToken($token)
+                ->get(config('services.auth.url') . '/api/usuarios', $queryParams);
+
+            return $response->ok() ? $response->json('data') : [];
+        } catch (\Exception $e) {
+            //\Log::error('Error al obtener información de usuarios: ' . $e->getMessage());
+            return [];
         }
     }
 }

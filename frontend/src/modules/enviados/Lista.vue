@@ -1,5 +1,5 @@
 <template>
-  <ul class="list-group list-group-flush">
+  <!-- <ul class="list-group list-group-flush">
     <li
       v-for="msg in props.mensajes"
       :key="msg.id"
@@ -19,10 +19,40 @@
         {{ formatDate(msg.fecha_envio) }}
       </div>
     </li>
-  </ul>
+  </ul> -->
+
+  <Tabla
+    ref="tablaRef"
+    :items="props.mensajes"
+    :columns="encabezadoTabla"
+    :pagination="props.pagination"
+    :multi-select="true"
+    :selected-items="props.seleccionados"
+    @items-per-page-change="handleSizeChange"
+    @row-select="handleSeleccion"
+    @sort="handleSort"
+    @page-change="handlePageChange"
+  >
+    <template #row="{ item }">
+      <div class="me-auto">
+        <div class="fw-bold text-dark d-flex align-items-center gap-2">
+          <i class="bi-send-fill text-success"></i>
+          Para: <span class="text-muted">Usuario {{ item.usuario_destino_id }}</span>
+        </div>
+        <div>{{ item.asunto }}</div>
+      </div>
+      <div class="text-muted small">
+        {{ formatDate(item.fecha_envio) }}
+      </div>
+    </template>
+  </Tabla>
 </template>
 
 <script setup>
+
+import { ref } from 'vue'
+import Tabla from '@/components/tablas/TablaBackend.vue'
+
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -36,6 +66,10 @@ const props = defineProps({
     default : null
   }
 })
+
+const encabezadoTabla = ref([
+  { columnName: "MENSAJES ENVIADOS", columnLabel: "enviados", sortEnabled: true, width: "100%" },
+]);
 
 defineEmits(['seleccionar'])
 

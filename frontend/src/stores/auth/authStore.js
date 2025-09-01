@@ -1,68 +1,76 @@
-// stores//auth/authStore.js
 import { defineStore } from "pinia";
 import JwtService from '@/core/services/JwtService';
 import createApiService from "@/core/services/ApiService";
+
 const ApiService = createApiService(import.meta.env.VITE_AUTH_API);
-// const AUTH_API = import.meta.env.VITE_AUTH_ORIGIN;
+const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
 
 const useAuthStore = defineStore('auth', {
   state : () => ({
     isAuthenticated : JwtService.loggedIn() || false,
     userData        : JSON.parse(JwtService.getUserLogged()) || null,
-    serviceName     : import.meta.env.VITE_SERVICE_NAME || 'sgd',
+    serviceName     : import.meta.env.VITE_SERVICE_NAME,
     isAuthReady     : false,
   }),
+
   getters : {
-    isLoggedIn       : (state) => state.isAuthenticated,
-    currentUser      : (state) => state.userData,
-    roles            : (state) => state.userData?.roles || [],
-    permisosServicio : (state) => {
-      if(!state.userData) return [];
-      console.log('permisos servicio', state.userData.roles);
-      return state.userData.roles?.flatMap((rol) => 
-        rol.permissions.filter((permiso) => permiso.tipo_permiso === 1 && permiso.nombre_servicio === state.serviceName)) || [];
-    },
-    permisosMenu : (state) => {
-      if(!state.userData) return [];
-      return state.userData.roles?.flatMap((rol) => 
-        rol.permissions.filter((permiso) => permiso.tipo_permiso === 4 && permiso.nombre_servicio === state.serviceName)) || [];
-    },
-    permisosRuta : (state) => {
-      if(!state.userData) return [];
-      return state.userData.roles?.flatMap((rol) => 
-        rol.permissions.filter((permiso) => permiso.tipo_permiso === 3 && permiso.nombre_servicio === state.serviceName)) || [];
-    },
-    permisosAccion : (state) => {
-      if(!state.userData) return [];
-      return state.userData.roles?.flatMap((rol) => 
-        rol.permissions.filter((permiso) => permiso.tipo_permiso === 2 && permiso.nombre_servicio === state.serviceName)) || [];
-    },
-    getMainMenuConfig : (state) => {
-      const permisos = state.userData?.roles
-        ?.flatMap((rol) =>
-          rol.permissions.filter((permiso) => permiso.nombre_servicio === state.serviceName)
-        ) || [];
-    
-      // Filtrar por tipo de permiso menú
-      const permisosMenu = permisos.filter(p => p.tipo_permiso === 4);
-    
+    isLoggedIn  : state => state.isAuthenticated,
+    currentUser : state => state.userData,
+    roles       : state => state.userData?.roles || [],
+
+    permisosServicio : state =>
+      state.roles.flatMap(rol =>
+        rol.permissions.filter(p =>
+          p.tipo_permiso === 1 && p.nombre_servicio === state.serviceName
+        )
+      ) || [],
+
+    permisosMenu : state =>
+      state.roles.flatMap(rol =>
+        rol.permissions.filter(p =>
+          p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
+        )
+      ) || [],
+
+    permisosRuta : state =>
+      state.roles.flatMap(rol =>
+        rol.permissions.filter(p =>
+          p.tipo_permiso === 3 && p.nombre_servicio === state.serviceName
+        )
+      ) || [],
+
+    permisosAccion : state =>
+      state.roles.flatMap(rol =>
+        rol.permissions.filter(p =>
+          p.tipo_permiso === 2 && p.nombre_servicio === state.serviceName
+        )
+      ) || [],
+
+    getMainMenuConfig(state) {
+      const permisosMenu = state.roles.flatMap(rol =>
+        rol.permissions.filter(p =>
+          p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
+        )
+      ) || [];
+      console.log("Generating main menu config for service:", permisosMenu);
+      
       const independientes = permisosMenu.filter(p => !p.permiso_padre_id && p.ruta);
-      const padresRaiz = permisosMenu.filter(p => !p.permiso_padre_id && !p.ruta);
+      const padres = permisosMenu.filter(p => !p.permiso_padre_id && !p.ruta);
       const hijos = permisosMenu.filter(p => p.permiso_padre_id);
-    
-      function buildRecursiveMenu(hijo) {
-        const subHijos = hijos.filter(p => p.permiso_padre_id === hijo.id);
+
+      const buildRecursive = (padre) => {
+        const children = hijos.filter(p => p.permiso_padre_id === padre.id);
         return {
-          heading        : hijo.descripcion,
-          route          : hijo.ruta || "#",
+          heading        : padre.descripcion,
+          route          : padre.ruta || "#",
           keenthemesIcon : "element-7",
-          bootstrapIcon  : hijo.icon || "bi-folder",
-          ...(subHijos.length ? { sub: subHijos.map(buildRecursiveMenu) } : {}),
+          bootstrapIcon  : padre.icon || "bi-folder",
+          ...(children.length ? { sub: children.map(buildRecursive) } : {}),
         };
-      }
-    
+      };
+
       const menu = [];
-    
+
       if (independientes.length) {
         menu.push({
           pages : independientes.map(p => ({
@@ -73,20 +81,20 @@ const useAuthStore = defineStore('auth', {
           })),
         });
       }
-    
-      padresRaiz.forEach(padre => {
-        const hijosDirectos = permisosMenu.filter(p => p.permiso_padre_id === padre.id);
+
+      padres.forEach(padre => {
+        const hijosDirectos = hijos.filter(p => p.permiso_padre_id === padre.id);
         if (!hijosDirectos.length) return;
-    
+
         menu.push({
           heading        : padre.descripcion,
           route          : padre.ruta || undefined,
           keenthemesIcon : "element-7",
           bootstrapIcon  : padre.icon || "bi-folder",
-          pages          : hijosDirectos.map(buildRecursiveMenu),
+          pages          : hijosDirectos.map(buildRecursive),
         });
       });
-    
+      console.log("Generated menu:", menu)
       return menu;
     },
     getHeaderMenuConfig : (state) => {
@@ -139,63 +147,102 @@ const useAuthStore = defineStore('auth', {
       });
     
       return menu;
-    }   
+    }
   },
+
   actions : {
-    async logout() {
-      // try {
-      //   const token = JwtService.getToken();
-      //   if (token) {
-      //     await ApiService.post('/logout', {}, {
-      //       headers : { Authorization: `Bearer ${token}` }
-      //     });
-      //   }
-      // } catch (error) {
-      //   console.error('Error during logout:', error);
-      // } finally {
-      //   // Limpiar todo
-      //   JwtService.destroyToken();
-      //   JwtService.destroyUserLogged();       
-      //   // Limpiar el estado
-      //   this.$patch({
-      //     isAuthenticated : false,
-      //     userData        : null
-      //   });
-        
-      //   localStorage.clear();
-      //   sessionStorage.clear();
-        
-      //   // Asegurar que se borren todas las cookies de sesión
-      //   document.cookie.split(";").forEach(function(c) {
-      //     document.cookie = c
-      //       .replace(/^ +/, "")
-      //       .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      //   });
-      //   //funcion para enviar msj al padre para cerrar su sesion
-      //   if (window.opener && !window.opener.closed) {
-      //     window.opener.postMessage({ type: 'LOGOUT' }, import.meta.env.VITE_AUTH_ORIGIN);
-      //   }
-      //   // Redirigir al login de la pagina de origen
-      //   //window.location.href = import.meta.env.VITE_AUTH_ORIGIN + '/login';
-
-
-      // }
-    },
-    setAuthReady(status) {
-      this.isAuthReady = status;
-      console.log('isAuthReady actualizado a:', this.isAuthReady)
-    },
     async validateToken() {
       try {
-        const response = await ApiService.get('/usuario');
-        this.userData = response.data;
-        JwtService.saveUserLogged(this.userData);
+        // 1. Obtener datos de usuario
+        const { data } = await ApiService.get('/usuario');
+        JwtService.saveUserLogged(data);
+        // 2. Obtener dependencia principal usando getOficinas
+        let userUnidadOrganica = null;
+        try {
+          // Importar dinámicamente el store de usuarios para evitar ciclos
+          const { default: useUsuariosStore } = await import('@/stores/usuarios/usuariosStore');
+          const usuariosStore = useUsuariosStore();
+          await usuariosStore.getOficinas(data.id);
+          // Tomamos la dependencia principal (ajusta según la estructura real)
+          if (usuariosStore.oficina && usuariosStore.oficina.dependencia && usuariosStore.oficina.dependencia.id) {
+            userUnidadOrganica = usuariosStore.oficina.dependencia.id;
+          } else if (Array.isArray(usuariosStore.oficina) && usuariosStore.oficina.length > 0 && usuariosStore.oficina[0].dependencia && usuariosStore.oficina[0].dependencia.id) {
+            userUnidadOrganica = usuariosStore.oficina[0].dependencia.id;
+          }
+        } catch (e) {
+          console.warn('No se pudo obtener la dependencia principal del usuario:', e);
+        }
+        this.$patch({
+          isAuthenticated    : true,
+          userData           : data,
+          userUnidadOrganica : userUnidadOrganica,
+        });
       } catch (error) {
-        console.error('Error fetching user data:', error);
-        //this.logout(); // Si falla, cerramos sesión
+        console.error("Token inválido o expirado:", error);
+        this.logout();
+      }
+    },
+
+    async logout() {
+      try {
+        await ApiService.post('/logout');
+      } catch (err) {
+        console.warn("Logout remoto fallido:", err);
+      } finally {
+        // Sincronización y limpieza
+        localStorage.setItem("cerrar-hijas", Date.now().toString());
+        JwtService.destroyToken();
+        JwtService.destroyUserLogged();
+        //sessionStorage.clear();
+        //localStorage.clear();
+
+        this.$patch({
+          isAuthenticated : false,
+          userData        : null,
+        });
+
+        // Limpiar cookies
+        //document.cookie.split(";").forEach(c => {
+        //  document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        //});
+
+        // Notificar al padre si existe
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: "LOGOUT" }, allowedOrigin);
+        }
+
+        /* window.close();
+        setTimeout(() => {
+          if (!window.closed) window.location.href = "/login";
+        }, 200); */
+      }
+    },
+
+    setAuthReady(status) {
+      this.isAuthReady = status;
+    },
+    // AGREGAR: Método para debugging de permisos
+    async debugPermisos() {
+      
+      // Verificar si hay más permisos en el backend
+      try {
+        const token = JwtService.getToken();
+        if (token) {
+          
+          // Llamada directa al endpoint de permisos
+          const response = await ApiService.get('/user-permissions');
+          
+          // Actualizar permisos si hay más de los que ya tenemos
+          if (response.data.length > (this.permisosAccion?.length || 0)) {
+            this.permisosAccion = response.data;
+          }
+
+        }
+      } catch (error) {
+        console.error('❌ Error verificando permisos en backend:', error);
       }
     },
   },
-}
-)
+});
+
 export default useAuthStore;

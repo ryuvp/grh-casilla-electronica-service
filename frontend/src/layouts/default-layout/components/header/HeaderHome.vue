@@ -32,7 +32,7 @@
           <img
             v-if="
               layout === 'dark-header' ||
-              (themeMode === 'dark' && layout === 'light-header')
+                (themeMode === 'dark' && layout === 'light-header')
             "
             alt="Logo"
             :src="getAssetPath('media/logos/default-dark.svg')"
@@ -55,8 +55,8 @@
       </template>
       <!--begin::Header wrapper-->
       <div
-        class="d-flex align-items-stretch justify-content-between flex-lg-grow-1"
         id="kt_app_header_wrapper"
+        class="d-flex align-items-stretch justify-content-between flex-lg-grow-1"
       >
         <KTHeaderMenu />
         <KTHeaderNavbar />
@@ -83,8 +83,8 @@ import {
 } from "@/layouts/default-layout/config/helper";
 
 export default defineComponent({
-  name: "layout-header",
-  components: {
+  name       : "LayoutHeader",
+  components : {
     KTHeaderMenu,
     KTHeaderNavbar,
   },

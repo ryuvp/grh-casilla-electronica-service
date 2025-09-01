@@ -35,6 +35,9 @@ const config: LayoutConfigTypes = {
       menu: {
         iconType: "bootstrap",
       },
+      // Agrega estas líneas para el color por defecto
+      bgColorLight: "green",
+      bgColorDark: "green",
     },
   },
   toolbar: {

@@ -5,6 +5,7 @@
     id="kt_app_sidebar"
     ref="sidebarRef"
     class="app-sidebar flex-column"
+    :class="sidebarColorClass"
     data-kt-drawer="true"
     data-kt-drawer-name="app-sidebar"
     data-kt-drawer-activate="{default: true, lg: false}"
@@ -20,27 +21,24 @@
   <!--end::sidebar-->
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from "vue";
-import { displaySidebar } from "@/layouts/default-layout/config/helper";
+<script setup>
+import { ref, computed } from "vue";
+import { displaySidebar, config, themeMode } from "@/layouts/default-layout/config/helper";
 import KTSidebarLogo from "@/layouts/default-layout/components/sidebar/SidebarLogo.vue";
 import KTSidebarMenu from "@/layouts/default-layout/components/sidebar/SidebarMenuGestion.vue";
 import KTSidebarFooter from "@/layouts/default-layout/components/sidebar/SidebarFooter.vue";
 
-export default defineComponent({
-  name       : "ThemeSidebar",
-  components : {
-    KTSidebarLogo,
-    KTSidebarMenu,
-    KTSidebarFooter,
-  },
-  setup() {
-    const sidebarRef = ref<HTMLFormElement | null>(null);
+const sidebarRef = ref(null);
 
-    return {
-      displaySidebar,
-      sidebarRef,
-    };
-  },
+const sidebarColorClass = computed(() => {
+  const sidebarConfig = config.value.sidebar?.default || {};
+  let color = sidebarConfig.bgColorLight || sidebarConfig.bgColorDark || "";
+
+  if (!color) {
+    const mode = themeMode.value;
+    color = mode === "dark" ? sidebarConfig.bgColorDark : sidebarConfig.bgColorLight;
+  }
+
+  return color ? `sidebar-bg-${color}` : "";
 });
 </script>

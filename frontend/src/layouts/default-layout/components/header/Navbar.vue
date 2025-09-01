@@ -1,62 +1,14 @@
 <template>
   <!--begin::Navbar-->
   <div class="app-navbar flex-shrink-0">
-    <!--begin::Search-->
-    <div class="app-navbar-item align-items-stretch ms-1 ms-md-4">
-      <KTSearch />
-    </div>
-    <!--end::Search-->
-    <!--begin::Activities-->
-    <div class="app-navbar-item ms-1 ms-md-4">
-      <!--begin::Drawer toggle-->
-      <div
-        id="kt_activities_toggle"
-        class="btn btn-icon btn-custom btn-icon-muted btn-active-light btn-active-color-primary w-35px h-35px"
-      >
-        <KTIcon icon-name="messages" icon-class="fs-2" />
-      </div>
-      <!--end::Drawer toggle-->
-    </div>
-    <!--end::Activities-->
-    <!--begin::Notifications-->
-    <div class="app-navbar-item ms-1 ms-md-4">
-      <!--begin::Menu- wrapper-->
-      <div
-        id="kt_menu_item_wow"
-        class="btn btn-icon btn-custom btn-icon-muted btn-active-light btn-active-color-primary w-35px h-35px"
-        data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
-        data-kt-menu-attach="parent"
-        data-kt-menu-placement="bottom-end"
-      >
-        <KTIcon icon-name="notification-status" icon-class="fs-2" />
-      </div>
-      <KTNotificationMenu />
-      <!--end::Menu wrapper-->
-    </div>
-    <!--end::Notifications-->
-    <!--begin::Chat-->
-    <div class="app-navbar-item ms-1 ms-md-4">
-      <!--begin::Menu wrapper-->
-      <div
-        id="kt_drawer_chat_toggle"
-        class="btn btn-icon btn-custom btn-icon-muted btn-active-light btn-active-color-primary w-35px h-35px position-relative"
-      >
-        <KTIcon icon-name="message-text-2" icon-class="fs-2" />
-        <span
-          class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 start-50 animation-blink"
-        ></span>
-      </div>
-      <!--end::Menu wrapper-->
-    </div>
-    <!--end::Chat-->
-    <!--begin::Notifications-->
+    <!--begin::Customize-->
     <div class="app-navbar-item ms-1 ms-md-4">
       <KTCustomize />
-      <!--end::Menu wrapper-->
     </div>
+    <!--end::Customize-->
+
     <!--begin::Theme mode-->
     <div class="app-navbar-item ms-1 ms-md-3">
-      <!--begin::Menu toggle-->
       <a
         href="#"
         class="btn btn-icon btn-custom btn-icon-muted btn-active-light btn-active-color-primary w-30px h-30px w-md-40px h-md-40px"
@@ -71,29 +23,41 @@
         />
         <KTIcon v-else icon-name="moon" icon-class="fs-2" />
       </a>
-      <!--begin::Menu toggle-->
       <KTThemeModeSwitcher />
     </div>
     <!--end::Theme mode-->
+
     <!--begin::User menu-->
     <div id="kt_header_user_menu_toggle" class="app-navbar-item ms-1 ms-md-4">
-      <!--begin::Menu wrapper-->
       <div
         class="cursor-pointer symbol symbol-35px"
         data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
         data-kt-menu-attach="parent"
         data-kt-menu-placement="bottom-end"
       >
-        <img
-          :src="getAssetPath('media/avatars/300-3.jpg')"
-          class="rounded-3"
-          alt="user"
-        />
+        <template v-if="user?.genero_nombre === 'Masculino'">
+          <img :src="avatarHombre" class="rounded-3" alt="Usuario masculino" />
+        </template>
+        <template v-else-if="user?.genero_nombre === 'Femenino'">
+          <img :src="avatarMujer" class="rounded-3" alt="Usuario femenino" />
+        </template>
+        <template v-else>
+          <div
+            class="symbol-label fs-6 text-white rounded-3 d-flex align-items-center justify-content-center"
+            :style="{
+              width: '35px',
+              height: '35px',
+              backgroundColor: getColorFromString(user?.nombre || user?.email || '?')
+            }"
+          >
+            {{ user?.nombre?.charAt(0).toUpperCase() || '?' }}
+          </div>
+        </template>
       </div>
       <KTUserMenu />
-      <!--end::Menu wrapper-->
     </div>
     <!--end::User menu-->
+
     <!--begin::Header menu toggle-->
     <div class="app-navbar-item d-lg-none ms-2 me-n2">
       <div
@@ -108,40 +72,39 @@
   <!--end::Navbar-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent } from "vue";
-import KTSearch from "@/layouts/default-layout/components/search/Search.vue";
+<script setup>
+// Imports
+import { computed } from "vue";
+import { useThemeStore } from "@/stores/theme";
+import useAuthStore from "@/stores/auth/authStore";
+import { ThemeModeComponent } from "@/assets/ts/layout";
 import KTCustomize from "@/layouts/default-layout/components/extras/Customize.vue";
-import KTNotificationMenu from "@/layouts/default-layout/components/menus/NotificationsMenu.vue";
 import KTUserMenu from "@/layouts/default-layout/components/menus/UserAccountMenu.vue";
 import KTThemeModeSwitcher from "@/layouts/default-layout/components/theme-mode/ThemeModeSwitcher.vue";
-import { ThemeModeComponent } from "@/assets/ts/layout";
-import { useThemeStore } from "@/stores/theme";
+import avatarHombre from "@/assets/img/avatar-hombre.png";
+import avatarMujer from "@/assets/img/avatar-mujer.png";
 
-export default defineComponent({
-  name       : "HeaderNavbar",
-  components : {
-    KTSearch,
-    KTNotificationMenu,
-    KTUserMenu,
-    KTThemeModeSwitcher,
-    KTCustomize,
-  },
-  setup() {
-    const store = useThemeStore();
+// Stores
+const themeStore = useThemeStore();
+const authStore = useAuthStore();
 
-    const themeMode = computed(() => {
-      if (store.mode === "system") {
-        return ThemeModeComponent.getSystemMode();
-      }
-      return store.mode;
-    });
+// Modo de tema actual
+const themeMode = computed(() =>
+  themeStore.mode === "system"
+    ? ThemeModeComponent.getSystemMode()
+    : themeStore.mode
+);
 
-    return {
-      themeMode,
-      getAssetPath,
-    };
-  },
-});
+// Usuario actual
+const user = computed(() => authStore.currentUser);
+
+// Generar color desde texto
+function getColorFromString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 50%)`;
+}
 </script>

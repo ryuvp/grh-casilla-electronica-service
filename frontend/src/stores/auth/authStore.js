@@ -52,7 +52,7 @@ const useAuthStore = defineStore('auth', {
           p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
         )
       ) || [];
-      console.log("Generating main menu config for service:", permisosMenu);
+      //console.log("Generating main menu config for service:", permisosMenu);
       
       const independientes = permisosMenu.filter(p => !p.permiso_padre_id && p.ruta);
       const padres = permisosMenu.filter(p => !p.permiso_padre_id && !p.ruta);
@@ -94,7 +94,7 @@ const useAuthStore = defineStore('auth', {
           pages          : hijosDirectos.map(buildRecursive),
         });
       });
-      console.log("Generated menu:", menu)
+      //console.log("Generated menu:", menu)
       return menu;
     },
     getHeaderMenuConfig : (state) => {
@@ -156,26 +156,9 @@ const useAuthStore = defineStore('auth', {
         // 1. Obtener datos de usuario
         const { data } = await ApiService.get('/usuario');
         JwtService.saveUserLogged(data);
-        // 2. Obtener dependencia principal usando getOficinas
-        let userUnidadOrganica = null;
-        try {
-          // Importar dinámicamente el store de usuarios para evitar ciclos
-          const { default: useUsuariosStore } = await import('@/stores/usuarios/usuariosStore');
-          const usuariosStore = useUsuariosStore();
-          await usuariosStore.getOficinas(data.id);
-          // Tomamos la dependencia principal (ajusta según la estructura real)
-          if (usuariosStore.oficina && usuariosStore.oficina.dependencia && usuariosStore.oficina.dependencia.id) {
-            userUnidadOrganica = usuariosStore.oficina.dependencia.id;
-          } else if (Array.isArray(usuariosStore.oficina) && usuariosStore.oficina.length > 0 && usuariosStore.oficina[0].dependencia && usuariosStore.oficina[0].dependencia.id) {
-            userUnidadOrganica = usuariosStore.oficina[0].dependencia.id;
-          }
-        } catch (e) {
-          console.warn('No se pudo obtener la dependencia principal del usuario:', e);
-        }
         this.$patch({
-          isAuthenticated    : true,
-          userData           : data,
-          userUnidadOrganica : userUnidadOrganica,
+          isAuthenticated : true,
+          userData        : data
         });
       } catch (error) {
         console.error("Token inválido o expirado:", error);

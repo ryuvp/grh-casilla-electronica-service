@@ -54,8 +54,41 @@
         </tbody>
       </table>
 
-      <div v-if="items.length === 0" class="text-center py-10">
-        <span class="text-gray-500">No se encontraron registros</span>
+      <!-- Estado de carga -->
+      <div v-if="loading" class="text-center py-5">
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+          
+          <!-- Texto principal con degradado -->
+          <div class="text-primary fw-bold fs-4 mb-0" style="background: linear-gradient(45deg, #0d6efd, #6f42c1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            Cargando datos
+          </div>
+          
+          <!-- Barra de progreso indeterminada -->
+          <div class="progress mt-3" style="width: 200px; height: 10px;">
+            <div
+              class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+              role="progressbar"
+              style="width: 100%"
+            ></div>
+          </div>
+
+          <!-- Texto descriptivo -->
+          <div class="text-muted fs-6">
+            Procesando información, por favor espere...
+          </div>
+        </div>
+      </div>
+
+      <!-- Sin datos (solo cuando no está cargando) -->
+      <div v-else-if="items.length === 0" class="text-center py-5">
+        <div class="d-flex flex-column align-items-center justify-content-center py-4">
+          <div class="mb-3">
+            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+          </div>
+          <div class="text-muted fw-semibold fs-5 mb-2">
+            No se encontraron registros
+          </div>
+        </div>
       </div>
     </div>
 
@@ -120,6 +153,7 @@ const props = defineProps({
   sortLabel      : { type: String, default: '' },            // Columna actualmente ordenada
   sortOrder      : { type: String, default: 'asc' },         // Orden actual: asc | desc
   multiSelect    : { type: Boolean, default: true },         // Permitir selección múltiple
+  loading        : { type: Boolean, default: false },        // Estado de carga
 })
 
 // === EVENTOS QUE EMITE EL COMPONENTE ===

@@ -40,14 +40,14 @@
           <tbody>
             <!-- FILAS -->
             <tr
-              v-for="(item, idx) in paginatedData"
+              v-for="(item, idx) in displayData"
               :key="item[idField]"
               tabindex="0"
               :class="getRowClasses(item[idField], idx)"
               @click="onRowClick($event, idx)"
               @keydown="onRowKeydown($event, idx)"
               @focus="scrollRowIntoView(idx)"
-              @mouseenter="keyboardIndex = idx + pageStart"
+              @mouseenter="keyboardIndex = idx + currentPageStart"
               ref="rowRefs"
               draggable="false"
             >
@@ -55,7 +55,6 @@
                 <td
                   v-for="header in headerConfig"
                   :key="header.columnLabel"
-                  :style="header.width ? { width: header.width, minWidth: header.width, maxWidth: header.width } : {}"
                   class="cell-ellipsis"
                 >
                   <span class="cell-ellipsis-content">{{ item[header.columnLabel] }}</span>
@@ -64,49 +63,67 @@
             </tr>
           </tbody>
         </table>
-        <!-- Mensaje cuando no hay registros -->
-        <div v-if="paginatedData.length === 0" class="text-center py-10">
-          <span class="text-gray-500">No se encontraron registros</span>
+        <!-- Mensaje cuando está cargando -->
+        <div v-if="isLoading" class="text-center py-5">
+          <div class="d-flex flex-column align-items-center gap-2">
+            <i class="bi bi-arrow-repeat text-primary" style="font-size: 3rem;"></i>
+            <span class="text-primary fw-medium">Cargando documentos...</span>
+          </div>
+        </div>
+        <!-- Mensaje cuando no hay registros - solo si no está cargando -->
+        <div v-else-if="displayData.length === 0" class="text-center py-5">
+          <div class="d-flex flex-column align-items-center gap-2">
+            <i class="bi bi-inbox text-body-secondary" style="font-size: 3rem;"></i>
+            <span class="text-body-secondary fw-medium">{{ noDataMessage }}</span>
+            <small v-if="props.externalPagination" class="text-body-tertiary">
+              Intenta ajustar los filtros de búsqueda
+            </small>
+          </div>
         </div>
       </div>
-      <!-- Paginación y controles de la tabla -->
+      
+      <!-- Paginación unificada -->
       <div class="d-flex justify-content-between align-items-center flex-wrap pt-5">
+        <!-- Selector de filas por página - SIEMPRE MOSTRAR -->
         <div class="d-flex align-items-center">
           <span class="text-muted fs-7 fw-semibold me-2">Filas por página:</span>
           <select
-            v-model.number="rowsPerPage"
+            :value="currentPageSize"
             class="form-select form-select-sm form-select-solid w-auto"
-            @change="changeRowsPerPage"
+            @change="handleRowsPerPageChange"
           >
             <option v-for="n in rowsPerPageOptions" :key="n" :value="n">{{ n }}</option>
           </select>
         </div>
+        
+        <!-- Información de paginación unificada -->
         <div class="fs-6 fw-semibold text-gray-700">
-          Mostrando {{ pageStart + 1 }} a {{ Math.min(pageStart + rowsPerPage, data.length) }}
-          de {{ data.length }} registros
+          Mostrando {{ currentPageStart + 1 }} a {{ Math.min(currentPageStart + currentPageSize, totalItems) }}
+          de {{ totalItems }} registros
         </div>
+        
+        <!-- Controles de paginación unificados -->
         <ul class="pagination mb-0">
-          <!-- Botones de paginación -->
-          <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" @click="goToPage(1)" :disabled="page === 1">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <button class="page-link" @click="goToFirstPage" :disabled="currentPage === 1">
               <i class="bi bi-chevron-double-left"></i>
             </button>
           </li>
-          <li class="page-item" :class="{ disabled: page === 1 }">
-            <button class="page-link" @click="prevPage" :disabled="page === 1">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <button class="page-link" @click="goToPrevPage" :disabled="currentPage === 1">
               <i class="bi bi-chevron-left"></i>
             </button>
           </li>
           <li class="page-item disabled">
-            <span class="page-link">{{ page }} / {{ totalPages }}</span>
+            <span class="page-link">{{ currentPage }} / {{ totalPagesComputed }}</span>
           </li>
-          <li class="page-item" :class="{ disabled: page === totalPages }">
-            <button class="page-link" @click="nextPage" :disabled="page === totalPages">
+          <li class="page-item" :class="{ disabled: currentPage === totalPagesComputed }">
+            <button class="page-link" @click="goToNextPage" :disabled="currentPage === totalPagesComputed">
               <i class="bi bi-chevron-right"></i>
             </button>
           </li>
-          <li class="page-item" :class="{ disabled: page === totalPages }">
-            <button class="page-link" @click="goToPage(totalPages)" :disabled="page === totalPages">
+          <li class="page-item" :class="{ disabled: currentPage === totalPagesComputed }">
+            <button class="page-link" @click="goToLastPage" :disabled="currentPage === totalPagesComputed">
               <i class="bi bi-chevron-double-right"></i>
             </button>
           </li>
@@ -125,11 +142,6 @@
         <button class="btn btn-sm btn-light-secondary me-2" @click="clearMultiSelection">
           <i class="bi bi-x-circle me-1"></i>Quitar selecciones
         </button>
-        <slot name="multi-actions" :selected-items="getSelectedItems()">
-          <button class="btn btn-sm btn-danger" @click="$emit('multi-delete', getSelectedItems())">
-            <i class="bi bi-trash me-1"></i>Eliminar seleccionados
-          </button>
-        </slot>
       </div>
     </div>
     
@@ -169,6 +181,17 @@ const props = defineProps<{
   rowsPerPageOptions?: number[]
   /** Habilita selección múltiple */
   multiSelect?: boolean
+  /** NEW: Props para paginación externa */
+  externalPagination?: boolean
+  paginationMeta?: {
+    total: number
+    per_page: number
+    current_page: number
+    last_page: number
+    has_more?: boolean
+  }
+  /** NEW: Prop para estado de carga */
+  isLoading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -184,6 +207,8 @@ const emit = defineEmits<{
   (e: 'multi-select', items: any[]): void
   /** Evento para eliminar múltiples elementos */
   (e: 'multi-delete', items: any[]): void
+  /** NEW: Evento para cambios de página externa */
+  (e: 'page-change', page: number): void
 }>()
 
 // Estado de la tabla y paginación
@@ -195,7 +220,7 @@ const sortState = ref({ label: '', order: '' })
 const keyboardIndex = ref(-1)
 const selectedRow = ref<number | null>(null)
 
-/** Datos con ordenamiento aplicado internamente */
+/** ORDENAMIENTO */
 const sortedData = computed(() => {
   if (!sortState.value.label || !sortState.value.order) {
     return [...props.data]
@@ -211,17 +236,17 @@ const sortedData = computed(() => {
     if (bValue == null) return sortState.value.order === 'asc' ? -1 : 1
 
     // Ordenamiento numérico para IDs y números
-    if (sortState.value.label === 'id' || (typeof aValue === 'number' && typeof bValue === 'number')) {
+    if (sortState.value.label === 'id' || sortState.value.label === 'expediente_id' || (typeof aValue === 'number' && typeof bValue === 'number')) {
       const numA = Number(aValue)
       const numB = Number(bValue)
       return sortState.value.order === 'asc' ? numA - numB : numB - numA
     }
 
-    // Ordenamiento especial para nombres (name/nombre)
-    if (sortState.value.label === 'name' || sortState.value.label === 'nombre') {
-      const nameA = aValue || a.nombre || a.name || ''
-      const nameB = bValue || b.nombre || b.name || ''
-      const comparison = nameA.toString().localeCompare(nameB.toString(), 'es', { 
+    // Ordenamiento especial para nombres y dependencias
+    if (sortState.value.label === 'name' || sortState.value.label === 'nombre' || sortState.value.label === 'dependencia_nombre' || sortState.value.label === 'usuario_id' || sortState.value.label === 'tipo_documento_id') {
+      const nameA = String(aValue || a.nombre || a.name || a.dependencia_nombre || a.usuario_nombre || a.tipo_documento_nombre || '')
+      const nameB = String(bValue || b.nombre || b.name || b.dependencia_nombre || b.usuario_nombre || b.tipo_documento_nombre || '')
+      const comparison = nameA.localeCompare(nameB, 'es', { 
         numeric: true, 
         sensitivity: 'base' 
       })
@@ -229,15 +254,26 @@ const sortedData = computed(() => {
     }
 
     // Ordenamiento para fechas
-    if (sortState.value.label === 'createdAt' || sortState.value.label.includes('fecha')) {
-      const dateA = aValue || a.created_at || a.createdDate || a.fecha_creacion || ''
-      const dateB = bValue || b.created_at || b.createdDate || b.fecha_creacion || ''
+    if (sortState.value.label === 'createdAt' || sortState.value.label.includes('fecha') || sortState.value.label === 'created_at') {
+      const dateA = aValue || a.created_at || a.createdDate || a.fecha_creacion || a.fecha || ''
+      const dateB = bValue || b.created_at || b.createdDate || b.fecha_creacion || b.fecha || ''
       if (dateA < dateB) return sortState.value.order === 'asc' ? -1 : 1
       if (dateA > dateB) return sortState.value.order === 'asc' ? 1 : -1
       return 0
     }
 
-    // Ordenamiento de texto
+    // Ordenamiento para asunto
+    if (sortState.value.label === 'asunto') {
+      const asuntoA = String(aValue || a.asunto || '')
+      const asuntoB = String(bValue || b.asunto || '')
+      const comparison = asuntoA.localeCompare(asuntoB, 'es', { 
+        numeric: true, 
+        sensitivity: 'base' 
+      })
+      return sortState.value.order === 'asc' ? comparison : -comparison
+    }
+
+    // Ordenamiento de texto general
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       const comparison = aValue.localeCompare(bValue, 'es', { 
         numeric: true, 
@@ -256,6 +292,32 @@ const sortedData = computed(() => {
 /** Datos de la tabla ahora usan sortedData */
 const data = computed(() => sortedData.value)
 
+/** NUEVO: Datos a mostrar - usar paginación externa o interna */
+const displayData = computed(() => {
+  return isBackendMode.value ? sortedData.value : paginatedData.value
+})
+
+/** NUEVO: Información de paginación unificada */
+const currentPage = computed(() => {
+  return props.externalPagination ? (props.paginationMeta?.current_page || 1) : page.value
+})
+
+const totalItems = computed(() => {
+  return props.externalPagination ? (props.paginationMeta?.total || 0) : data.value.length
+})
+
+const currentPageSize = computed(() => {
+  return props.externalPagination ? (props.paginationMeta?.per_page || 10) : rowsPerPage.value
+})
+
+const currentPageStart = computed(() => {
+  return (currentPage.value - 1) * currentPageSize.value
+})
+
+const totalPagesComputed = computed(() => {
+  return props.externalPagination ? (props.paginationMeta?.last_page || 1) : totalPages.value
+})
+
 /** Número total de páginas */
 const totalPages = computed(() => Math.max(1, Math.ceil(data.value.length / rowsPerPage.value)))
 /** Índice de inicio de la página actual */
@@ -265,10 +327,22 @@ const paginatedData = computed(() =>
   data.value.slice(pageStart.value, pageStart.value + rowsPerPage.value)
 )
 
-/** Datos de la fila seleccionada */
-const selectedRowData = computed(() => 
-  selectedRow.value !== null ? paginatedData.value[selectedRow.value] : null
-)
+/** Datos de la fila seleccionada - CORREGIR para paginación externa */
+const selectedRowData = computed(() => {
+  if (selectedRow.value !== null) {
+    return props.externalPagination 
+      ? displayData.value[selectedRow.value]  // Para paginación externa, usar displayData
+      : paginatedData.value[selectedRow.value]  // Para paginación interna, usar paginatedData
+  }
+  return null
+})
+
+// CORREGIR: Función para mostrar datos correctos en "no hay registros"
+const noDataMessage = computed(() => {
+  return props.externalPagination 
+    ? 'No se encontraron documentos con los filtros aplicados'
+    : 'No se encontraron registros'
+})
 
 // Estado para selección múltiple y hover
 const selectedRows = ref<number[]>([])
@@ -293,15 +367,15 @@ function isRowSelected(idx: number) {
   // La fila tiene selección simple si selectedRow === idx
   const isSimpleSelected = selectedRow.value === idx;
   
-  // La fila tiene selección múltiple si está en selectedRows Y hay 2+ filas seleccionadas
+  // La fila tiene selección múltiple si está en selectedRows
   const isInMultiSelection = props.multiSelect && selectedRows.value.includes(idx);
-  const hasMultipleSelections = selectedRows.value.length >= 2;
   
-  // Solo activamos el estilo "multi-row-selected" cuando hay 2+ selecciones
+  // En modo multiselect, SIEMPRE usar el estilo de selección múltiple
+  // Solo usar table-active cuando NO estamos en modo multiselect
   return {
     'row-active': idx + pageStart.value === keyboardIndex.value,
-    'table-active': isSimpleSelected || (isInMultiSelection && !hasMultipleSelections),
-    'multi-row-selected': isInMultiSelection && hasMultipleSelections,
+    'table-active': isSimpleSelected && !props.multiSelect,
+    'multi-row-selected': isInMultiSelection,
   }
 }
 
@@ -313,29 +387,30 @@ function changeRowsPerPage() {
 
 // Cambia de página
 function goToPage(p: number) {
-  if (p >= 1 && p <= totalPages.value) page.value = p
+  changePage(p)
 }
 
 // Página anterior
 function prevPage() {
-  if (page.value > 1) page.value--
+  goToPrevPage()
 }
 
 // Página siguiente
 function nextPage() {
-  if (page.value < totalPages.value) page.value++
+  goToNextPage()
 }
 
-// Ordena por columna - FUNCIÓN CORREGIDA PARA MANEJAR INTERNAMENTE
+// SORT SIEMPRE INTERNO
 function sortBy(label: string) {
+  let newOrder = 'asc'
   if (sortState.value.label === label) {
-    // Cambiar dirección si es la misma columna
-    sortState.value.order = sortState.value.order === 'asc' ? 'desc' : 'asc'
-  } else {
-    // Nueva columna, ordenar ascendente
-    sortState.value = { label, order: 'asc' }
+    newOrder = sortState.value.order === 'asc' ? 'desc' : 'asc'
   }
   
+  sortState.value = { label, order: newOrder }
+  
+  // SIEMPRE emitir el evento sort (para que otros componentes sepan que hubo sorting)
+  emit('sort', { label, order: newOrder })
 }
 
 // Icono de orden
@@ -346,7 +421,7 @@ function getSortIcon(label: string) {
 
 // Actualiza el índice de la fila sobre la que está el cursor
 function handleMouseEnter(idx: number) {
-  keyboardIndex.value = idx + pageStart.value
+  keyboardIndex.value = idx + currentPageStart.value
   hoveredIndex.value = idx
 }
 
@@ -379,23 +454,20 @@ function onRowClick(e: MouseEvent, idx: number) {
       return
     }
     
-    // Ctrl/Cmd+click = toggle individual
+    // Ctrl/Cmd+click = toggle individual (comportamiento original)
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault()
       toggleRowSelection(idx)
       return
     }
     
-    // Iniciar proceso de arrastre para selección múltiple
-    dragStartIdx.value = idx;
-    
-    // Click simple:
-    // Si la fila ya estaba seleccionada en modo multi, la quitamos
+    // Click simple mejorado:
+    // Si la fila ya está seleccionada, la deseleccionamos
     if (selectedRows.value.includes(idx)) {
       selectedRows.value = selectedRows.value.filter(i => i !== idx)
     } else {
-      // Si no, seleccionamos solo esta fila (sin cambiar estilo multi todavía)
-      selectedRows.value = [idx]
+      // Si no está seleccionada, la agregamos a la selección
+      selectedRows.value.push(idx)
     }
     
     lastSelectedIndex.value = idx
@@ -408,8 +480,10 @@ function onRowClick(e: MouseEvent, idx: number) {
     emit('row-select', { index: null, item: null })
   } else {
     selectedRow.value = idx
-    emit('row-select', { index: idx, item: paginatedData.value[idx] })
-    // No enfocamos botones en clic, solo en Enter
+    const selectedItem = props.externalPagination 
+      ? displayData.value[idx] 
+      : paginatedData.value[idx]
+    emit('row-select', { index: idx, item: selectedItem })
   }
 }
 
@@ -437,9 +511,10 @@ function toggleSelectAll() {
   emit('multi-select', getSelectedItems());
 }
 
-// Obtiene los elementos seleccionados
+// CORREGIR: Función getSelectedItems para usar displayData en paginación externa
 function getSelectedItems() {
-  return selectedRows.value.map(idx => paginatedData.value[idx]);
+  const dataToUse = props.externalPagination ? displayData.value : paginatedData.value
+  return selectedRows.value.map(idx => dataToUse[idx]);
 }
 
 // Manejo de teclado en filas
@@ -452,7 +527,10 @@ function onRowKeydown(e: KeyboardEvent, idx: number) {
       emit('row-select', { index: null, item: null })
     } else {
       selectedRow.value = idx
-      emit('row-select', { index: idx, item: paginatedData.value[idx] })
+      const selectedItem = props.externalPagination 
+        ? displayData.value[idx] 
+        : paginatedData.value[idx]
+      emit('row-select', { index: idx, item: selectedItem })
       emit('action-focus')
       
       // Enfocar el primer botón de acción
@@ -623,6 +701,12 @@ function handleGlobalKeys(e: KeyboardEvent) {
     })
   }
   
+  // Manejar Escape para limpiar selección múltiple
+  if (e.key === 'Escape' && props.multiSelect && selectedRows.value.length > 0) {
+    clearMultiSelection()
+    return
+  }
+  
   // Si se presiona Delete fuera de una fila y hay elementos seleccionados, limpiar selección
   if (e.key === 'Delete' && props.multiSelect && selectedRows.value.length > 0) {
     const activeElement = document.activeElement;
@@ -697,8 +781,8 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', () => {});
 })
 
-// Restablecer selección al cambiar de página
-watch(page, () => {
+// Restablecer selección al cambiar de página (tanto interna como externa)
+watch([() => page.value, () => props.paginationMeta?.current_page], () => {
   selectedRows.value = [];
   emit('multi-select', []);
 })
@@ -726,32 +810,55 @@ defineExpose({
     emit('multi-select', getSelectedItems());
   }
 })
+
+// NUEVAS FUNCIONES DE PAGINACIÓN UNIFICADAS
+function goToFirstPage() {
+  changePage(1)
+}
+
+function goToPrevPage() {
+  if (currentPage.value > 1) {
+    changePage(currentPage.value - 1)
+  }
+}
+
+function goToNextPage() {
+  if (currentPage.value < totalPagesComputed.value) {
+    changePage(currentPage.value + 1)
+  }
+}
+
+function goToLastPage() {
+  changePage(totalPagesComputed.value)
+}
+
+function changePage(newPage: number) {
+  if (newPage >= 1 && newPage <= totalPagesComputed.value) {
+    if (props.externalPagination) {
+      emit('page-change', newPage)
+    } else {
+      page.value = newPage
+    }
+  }
+}
+
+// NUEVA: Función para manejar cambio de filas por página
+function handleRowsPerPageChange(event: Event) {
+  const newSize = Number((event.target as HTMLSelectElement).value)
+  
+  if (props.externalPagination) {
+    // En modo externo, emitir evento para que el padre maneje el cambio
+    emit('items-per-page-change', newSize)
+  } else {
+    // En modo interno, cambiar localmente
+    rowsPerPage.value = newSize
+    page.value = 1
+    emit('items-per-page-change', newSize)
+  }
+}
+
+// DETECCIÓN AUTOMÁTICA: ¿Es modo backend?
+const isBackendMode = computed(() => !!props.paginationMeta)
 </script>
 
-<style lang="scss" scoped>
-@import './TablaEstilos.scss';
 
-/**
- * Estilos base de la tabla
- * - Header sticky al hacer scroll
- * - Bordes y espaciados consistentes
- * - Estilos de paginación
- */
-
-/* Ellipsis para celdas con overflow */
-.cell-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 1px; /* será sobrescrito por el width inline si existe */
-  position: relative;
-}
-
-.cell-ellipsis-content {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-</style>

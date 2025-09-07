@@ -25,14 +25,48 @@ trait Filterable
             $builder->with($request->input('with'));
         }
 
-        // Apply filters
-        $builder->where(function ($query) use ($request) {
-            foreach ($request->only($this->filters) as $filter => $value) {
-                $this->resolveFilter($filter, $query, $value);
-            }
-        });
+        // Filtro especial: búsqueda por múltiples columnas
+        if ($request->filled('search') && $request->filled('searchField')) {
+            $search = $request->input('search');
+            $fields = (array) $request->input('searchField');
+            $table = $builder->getModel()->getTable();
 
-        // Pagination (skip & take)
+            $builder->where(function ($query) use ($fields, $search, $table) {
+                foreach ($fields as $field) {
+                    if (is_array($search)) {
+                        // 👇 IN si search es array
+                        $query->orWhereIn("$table.$field", $search);
+                    } else {
+                        // 👇 Búsqueda por ILIKE si es string
+                        $query->orWhere("$table.$field", 'ILIKE', "%$search%");
+                    }
+                }
+            });
+        }
+
+        // Filtro de rango de fechas
+        if ($request->filled('dateField')) {
+            $field = $request->input('dateField');
+
+            if ($request->filled('dateStart')) {
+                $builder->whereDate($field, '>=', $request->input('dateStart'));
+            }
+
+            if ($request->filled('dateEnd')) {
+                $builder->whereDate($field, '<=', $request->input('dateEnd'));
+            }
+        }
+
+        // Filtros simples definidos en el modelo (por exactitud o con operadores)
+        if (!empty($this->filters)) {
+            $builder->where(function ($query) use ($request) {
+                foreach ($request->only($this->filters) as $filter => $value) {
+                    $this->resolveFilter($filter, $query, $value);
+                }
+            });
+        }
+
+        // Paginación opcional sin paginate()
         if ($request->filled('skip')) {
             $builder->skip((int) $request->input('skip'));
         }
@@ -41,7 +75,7 @@ trait Filterable
             $builder->take((int) $request->input('take'));
         }
 
-        // Order by (format: ["column.direction", ...])
+        // Orden dinámico
         if ($request->filled('orders')) {
             foreach ((array) $request->input('orders') as $order) {
                 [$column, $direction] = explode('.', $order) + [null, 'asc'];
@@ -56,7 +90,7 @@ trait Filterable
 
     public function addFilters(array $filters): self
     {
-        $this->filters = array_merge($this->filters, $filters);
+        $this->filters = array_merge($this->filters ?? [], $filters);
         return $this;
     }
 
@@ -69,22 +103,20 @@ trait Filterable
     protected function resolveFilter(string $filter, Builder $builder, mixed $value): Builder
     {
         if (is_object($value)) {
-            // Soporte para filtros anidados u objetos con su propio método filter()
             return (new $value)->filter($builder, $value);
         }
 
         if (!is_array($value)) {
-            // Filtro simple: columna = valor
             return $builder->where($filter, $value);
         }
 
-        // Filtros con operadores
         $operator = strtoupper($value[0]);
         $operand = $value[1] ?? null;
 
         return match ($operator) {
             'IN'   => $builder->whereIn($filter, array_slice($value, 1)),
             'LIKE' => $builder->where($filter, 'LIKE', "%$operand%"),
+            'ILIKE' => $builder->where($filter, 'ILIKE', "%$operand%"),
             default => count($value) === 2
                 ? $builder->where($filter, $value[0], $value[1])
                 : $builder,

@@ -26,7 +26,7 @@ const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
 
 // Función para inicializar la app
 const init = () => {
-  authStore.validateToken();
+  //authStore.validateToken();
   initializeComponents();
   bodyStore.removeBodyClassName("page-loading");
 };
@@ -44,8 +44,16 @@ const handleMessage = async (event) => {
   }
 
   try {
+    // Guarda token y *espera* a hidratar el store con usuario/roles
     JwtService.saveToken(token);
+    await authStore.validateToken();
+    authStore.setAuthReady(true);
+
     init();
+
+    if (router.currentRoute.value.path === '/loading') {
+      router.replace('/bandeja');
+    }
   } catch (error) {
     console.error("Error al guardar el token:", error);
     window.close();
@@ -62,7 +70,7 @@ const handleCerrarHijas = (event) => {
     window.close();
     setTimeout(() => {
       if (!window.closed) {
-        router.push('/login');
+        window.location.href = allowedOrigin + "/login";
       }
     }, 200);
     window.close();
@@ -73,17 +81,27 @@ onBeforeMount(() => {
   configStore.overrideLayoutConfig();
   themeStore.setThemeMode(themeConfigValue.value);
 });
+
 onMounted(() => {
-  nextTick(() => {
+  nextTick( async () => {
     const tokenExiste = JwtService.haveToken();
     const tieneOrigen = !!window.opener;
 
     if (!tokenExiste && !tieneOrigen) {
       window.location.href = allowedOrigin + "/login";
+      return;
     }
-
+    // Si recargaron con token: hidrata store antes de salir de /loading
     if (tokenExiste) {
+      try {
+        await authStore.validateToken();
+      } finally {
+        authStore.setAuthReady(true);
+      }
       init();
+      if (router.currentRoute.value.path === '/loading') {
+        router.push('/bandeja');
+      }
     }
     window.addEventListener("message", handleMessage);
     window.addEventListener("storage", handleCerrarHijas);

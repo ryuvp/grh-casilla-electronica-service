@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CasillaController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MensajeController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\MensajeController;
 */
 
 Route::middleware('remoteauth')->group(function () {
+    Route::apiResource('/casillas', CasillaController::class);
     Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);
     Route::get('/mensajes/enviados', [MensajeController::class, 'bandejaEnviados']);
     Route::post('/mensajes', [MensajeController::class, 'store']);

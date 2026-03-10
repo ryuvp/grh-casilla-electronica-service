@@ -4,21 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Models\Logs;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
+/**
+ * LogsController.
+ *
+ * Expone operaciones de consulta y mantenimiento de bitacora tecnica.
+ */
 class LogsController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Lista logs aplicando filtros dinamicos del trait Filterable.
      */
     public function index(Request $request)
     {
+        // Retorna coleccion filtrada de logs para auditoria tecnica.
         return response()->json([
-            'data' => Log::filter($request)->get(),
+            'data' => Logs::filter($request)->get(),
         ], Response::HTTP_OK);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Endpoint no implementado para creacion manual de logs.
      */
     public function store(Request $request)
     {
@@ -26,7 +33,7 @@ class LogsController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Endpoint no implementado para detalle individual.
      */
     public function show(Logs $logs)
     {
@@ -34,7 +41,7 @@ class LogsController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Endpoint no implementado para actualizacion de logs.
      */
     public function update(Request $request, Logs $logs)
     {
@@ -42,7 +49,7 @@ class LogsController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Endpoint no implementado para eliminacion de logs.
      */
     public function destroy(Logs $logs)
     {

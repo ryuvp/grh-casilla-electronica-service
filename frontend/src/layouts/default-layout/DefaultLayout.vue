@@ -32,9 +32,8 @@
   <KTModals />
 </template>
 
-<script lang="ts">
+<script setup>
 import {
-  defineComponent,
   nextTick,
   onBeforeMount,
   onMounted,
@@ -52,39 +51,24 @@ import { useRoute } from "vue-router";
 import { reinitializeComponents } from "@/core/plugins/keenthemes";
 import LayoutService from "@/core/services/LayoutService";
 
-export default defineComponent({
-  name       : "DefaultLayout",
-  components : {
-    KTHeader,
-    KTSidebar,
-    KTContent,
-    KTToolbar,
-    KTFooter,
-    KTDrawers,
-    KTScrollTop,
-    KTModals,
-  },
-  setup() {
-    const route = useRoute();
+const route = useRoute();
 
-    onBeforeMount(() => {
-      LayoutService.init();
-    });
-
-    onMounted(() => {
-      nextTick(() => {
-        reinitializeComponents();
-      });
-    });
-
-    watch(
-      () => route.path,
-      () => {
-        nextTick(() => {
-          reinitializeComponents();
-        });
-      }
-    );
-  },
+onBeforeMount(() => {
+  LayoutService.init();
 });
+
+onMounted(() => {
+  nextTick(() => {
+    reinitializeComponents();
+  });
+});
+
+watch(
+  () => route.path,
+  () => {
+    nextTick(() => {
+      reinitializeComponents();
+    });
+  }
+);
 </script>

@@ -10,7 +10,7 @@ use App\Filters\Filterable;
 /**
  * Modelo Casilla.
  *
- * Representa un buzon electronico asignado a un titular (usuario/dependencia).
+ * Representa un buzon electronico asignado a una designacion activa.
  * Incluye soft delete para trazabilidad administrativa.
  */
 class Casilla extends Model
@@ -22,8 +22,7 @@ class Casilla extends Model
      */
     protected $fillable = [
         'numero',
-        'titular_tipo',
-        'titular_id',
+        'designacion_id',
         'activo',
         'fecha_inicio',
         'fecha_fin',
@@ -34,36 +33,16 @@ class Casilla extends Model
      */
     public static $validables = [
         'numero'        => 'required|string|max:255|unique:casillas,numero',
-        'titular_tipo'  => 'required|integer|in:1,2,3',
-        'titular_id'    => 'required|integer',
+        'designacion_id'=> 'required|integer|min:1',
         'activo'        => 'nullable|boolean',
         'fecha_inicio'  => 'nullable|date',
         'fecha_fin'     => 'nullable|date|after_or_equal:fecha_inicio',
     ];
     public static $filters = [
         'numero',
-        'titular_tipo',
-        'titular_id',
+        'designacion_id',
         'activo',
         'fecha_inicio',
         'fecha_fin',
     ];
-
-    /**
-     * Mapa de etiquetas para el tipo de titular.
-     */
-    const tipoMap = [
-        1 => 'Usuario',
-        2 => 'Dependencia',
-        3 => 'Dependencia Externa',
-        4 => 'Otros',
-    ];
-
-    /**
-     * Accesor para exponer nombre legible del tipo de titular.
-     */
-    public function getTipoNombreAttribute()
-    {
-        return self::tipoMap[$this->titular_tipo] ?? '';
-    }
 }

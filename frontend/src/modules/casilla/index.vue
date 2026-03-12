@@ -36,13 +36,17 @@ import Ver from './Ver.vue'
 import useAuthStore from '@/stores/auth/authStore'
 import useCasillaStore from '@/stores/casillas/casillasPaginadoStore.js'
 
+// Stores principales del modulo: datos de casilla y permisos de accion.
 const store = useCasillaStore();
 const authStore = useAuthStore();
 
+// Referencia al formulario modal para alta/edicion.
 const formularioRef = useTemplateRef('formularioRef')
 
+// Item activo usado en formularios y modal de detalle.
 const item = ref({ ...store.default })
 
+// Sincroniza item activo con seleccion actual de la tabla.
 watch(() => store.seleccionados, (newVal) => {
   if (newVal && newVal.length === 1) {
     item.value = { ...store.default, ...newVal[0] }
@@ -51,10 +55,12 @@ watch(() => store.seleccionados, (newVal) => {
   }
 }, { immediate: true, deep: true })
 
+// Carga inicial de casillas paginadas.
 onMounted( async () => {
   await store.get();
 });
 
+// Define botones dinamicos segun si hay seleccion en tabla.
 const botonesAccion = computed(() => {
   if (store.tieneSeleccionados) {
     return [
@@ -93,15 +99,18 @@ const botonesAccion = computed(() => {
   }
 })
 
+// Prepara modal para crear una nueva casilla.
 function agregar() {
   item.value = { ...store.default }
   formularioRef.value.abrir()
 }
 
+// Abre modal de edicion con item actualmente sincronizado.
 function editar() {
   formularioRef.value.abrir()
 }
 
+// Solicita confirmacion y ejecuta eliminacion logica de casilla.
 function eliminar(rowItem) {
   if (!rowItem || !rowItem.id) return
 

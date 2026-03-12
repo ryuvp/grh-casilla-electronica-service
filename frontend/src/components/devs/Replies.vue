@@ -127,15 +127,15 @@
   <!--end::Replies-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "dev-replies",
-  components: {},
-  setup() {
-    const replies = ref([
+});
+
+const replies = ref([
       {
         message:
           "I’ve been doing some ajax request, to populate a inside drawer, the content of that drawer has a sub menu, that you are using in list and all card toolbar.",
@@ -182,11 +182,4 @@ export default defineComponent({
         indent: "",
       },
     ]);
-
-    return {
-      replies,
-      getAssetPath,
-    };
-  },
-});
 </script>

@@ -1000,9 +1000,9 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed } from "vue";
 import { config, layout, themeMode } from "@/layouts/default-layout/config/helper";
 import CodeHighlighter from "@/components/highlighters/CodeHighlighter.vue";
 import { themeName } from "@/core/helpers/system";
@@ -1012,72 +1012,66 @@ import { LS_CONFIG_NAME_KEY, useConfigStore } from "@/stores/config";
 const LS_BUILDER_TAB_NAME =
   "layoutBuilderTabIndex_" + import.meta.env.VITE_APP_DEMO;
 
-export default defineComponent({
-  name: "layout-builder",
-  components: {
-    CodeHighlighter,
-  },
-  setup() {
-    const storeTheme = useThemeStore();
-    const storeBody = useConfigStore();
-    const tabIndex = ref<string>("main");
-    const layoutType = ref(layout.value);
+const storeTheme = useThemeStore();
+const storeBody = useConfigStore();
+const tabIndex = ref("main");
+const layoutType = ref(layout.value);
 
-    onMounted(() => {
-      // set the tab from previous
-      tabIndex.value = localStorage.getItem(LS_BUILDER_TAB_NAME) || "main";
-    });
+onMounted(() => {
+  // set the tab from previous
+  tabIndex.value = localStorage.getItem(LS_BUILDER_TAB_NAME) || "main";
+});
 
     /**
      * Reset config
      * @param e
      */
-    const reset = (e: Event) => {
-      e.preventDefault();
-      // remove existing saved config
-      localStorage.removeItem(LS_CONFIG_NAME_KEY);
-      window.location.reload();
-    };
+const reset = (e) => {
+  e.preventDefault();
+  // remove existing saved config
+  localStorage.removeItem(LS_CONFIG_NAME_KEY);
+  window.location.reload();
+};
 
     /**
      * Set active tab when the tab get clicked
      * @param e
      */
-    const setActiveTab = (e: Event) => {
-      const target = e.target as HTMLInputElement;
+const setActiveTab = (e) => {
+  const target = e.target;
 
-      tabIndex.value = target.getAttribute("data-tab-index") as string;
-      // keep active tab
-      localStorage.setItem(LS_BUILDER_TAB_NAME, tabIndex.value);
-    };
+  tabIndex.value = target.getAttribute("data-tab-index") || "main";
+  // keep active tab
+  localStorage.setItem(LS_BUILDER_TAB_NAME, tabIndex.value);
+};
 
-    const onThemeModeChange = (e: Event) => {
-      const target = e.target as HTMLInputElement;
+const onThemeModeChange = (e) => {
+  const target = e.target;
 
-      storeBody.setLayoutConfigProperty("general.mode", target.value);
+  storeBody.setLayoutConfigProperty("general.mode", target.value);
 
-      storeTheme.setThemeMode(target.value as "light" | "dark" | "system");
+  storeTheme.setThemeMode(target.value);
 
-      // save new config to localStorage
-      localStorage.setItem(LS_CONFIG_NAME_KEY, JSON.stringify(config.value));
-    };
+  // save new config to localStorage
+  localStorage.setItem(LS_CONFIG_NAME_KEY, JSON.stringify(config.value));
+};
 
     /**
      * Submit form
      * @param event
      */
-    const submit = (event: Event) => {
-      event.preventDefault();
+const submit = (event) => {
+  event.preventDefault();
 
-      storeBody.setLayoutConfigProperty("general.layout", layoutType);
+  storeBody.setLayoutConfigProperty("general.layout", layoutType);
 
-      // save new config to localStorage
-      localStorage.setItem(LS_CONFIG_NAME_KEY, JSON.stringify(config.value));
-      window.location.reload();
-    };
+  // save new config to localStorage
+  localStorage.setItem(LS_CONFIG_NAME_KEY, JSON.stringify(config.value));
+  window.location.reload();
+};
 
     // Colores disponibles para el sidebar (11 colores)
-    const sidebarColors = [
+  const sidebarColors = [
       { value: "yellow", label: "Amarillo", hex: "#FFE600" },
       { value: "dark-yellow", label: "Amarillo Oscuro", hex: "#F9B233" },
       { value: "orange", label: "Naranja", hex: "#F39200" },
@@ -1092,63 +1086,42 @@ export default defineComponent({
     ];
 
     // Detectar el tema actual (light/dark)
-    const currentTheme = computed(() => {
-      // themeMode puede ser 'light', 'dark' o 'system'
-      if (themeMode.value === "system") {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-      }
-      return themeMode.value;
-    });
+const currentTheme = computed(() => {
+  // themeMode puede ser 'light', 'dark' o 'system'
+  if (themeMode.value === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return themeMode.value;
+});
 
-    const currentThemeLabel = computed(() =>
-      currentTheme.value === "dark" ? "oscuro" : "claro"
-    );
+const currentThemeLabel = computed(() =>
+  currentTheme.value === "dark" ? "oscuro" : "claro"
+);
 
     // Saber qué color está seleccionado para el tema actual
-    function isSidebarColorSelected(color: string) {
-      const sidebarDefault = (config.value.sidebar?.default ?? {}) as any;
-      if (currentTheme.value === "dark") {
-        return (sidebarDefault.bgColorDark || "") === color;
-      }
-      return (sidebarDefault.bgColorLight || "") === color;
-    }
+function isSidebarColorSelected(color) {
+  const sidebarDefault = config.value.sidebar?.default ?? {};
+  if (currentTheme.value === "dark") {
+    return (sidebarDefault.bgColorDark || "") === color;
+  }
+  return (sidebarDefault.bgColorLight || "") === color;
+}
 
     // Cambiar el color del sidebar para el tema actual
-    function setSidebarColor(color: string) {
-      const sidebarDefault = (config.value.sidebar?.default ?? {}) as any;
-      if (color) {
-        // Guardar el color en ambos temas para que se mantenga al cambiar de tema
-        sidebarDefault.bgColorLight = color;
-        sidebarDefault.bgColorDark = color;
-      } else {
-        // Si es por defecto, limpiar ambos
-        sidebarDefault.bgColorLight = "";
-        sidebarDefault.bgColorDark = "";
-      }
-      // Guardar en localStorage para persistencia inmediata
-      localStorage.setItem(LS_CONFIG_NAME_KEY, JSON.stringify(config.value));
-    }
-
-    return {
-      tabIndex,
-      config,
-      reset,
-      setActiveTab,
-      submit,
-      themeMode,
-      themeName,
-      layout,
-      layoutType,
-      onThemeModeChange,
-      getAssetPath,
-      sidebarColors,
-      currentTheme,
-      currentThemeLabel,
-      isSidebarColorSelected,
-      setSidebarColor,
-    };
-  },
-});
+function setSidebarColor(color) {
+  const sidebarDefault = config.value.sidebar?.default ?? {};
+  if (color) {
+    // Guardar el color en ambos temas para que se mantenga al cambiar de tema
+    sidebarDefault.bgColorLight = color;
+    sidebarDefault.bgColorDark = color;
+  } else {
+    // Si es por defecto, limpiar ambos
+    sidebarDefault.bgColorLight = "";
+    sidebarDefault.bgColorDark = "";
+  }
+  // Guardar en localStorage para persistencia inmediata
+  localStorage.setItem(LS_CONFIG_NAME_KEY, JSON.stringify(config.value));
+}
 </script>

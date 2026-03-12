@@ -12,9 +12,9 @@
     <div class="border-bottom pb-3 mb-3">
       <h4 class="mb-1">{{ props.mensaje.asunto }}</h4>
       <div class="text-muted small">
-        <span><strong>De:</strong> Yo, noreply</span><br />
-        <span><strong>Para:</strong> Usuario destinatario (ID: {{ props.mensaje.usuario_destino_id }})</span><br />
-        <span><strong>Fecha:</strong> {{ formatFecha(props.mensaje.fecha_envio) }}</span><br />
+        <span><strong>De:</strong> {{ deTexto }}</span><br />
+        <span><strong>Para:</strong> {{ paraTexto }}</span><br />
+        <span><strong>Fecha:</strong> {{ formatFecha(props.mensaje.created_at) }}</span><br />
         <span><strong>Prioridad:</strong>
           <span
             :class="{
@@ -66,8 +66,9 @@
 </template>
 
 <script setup>
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { ref, watch } from 'vue'
+import useDesignacionStore from '@/stores/designaciones/designacionStore'
+import { formatDateTimeLima } from '@/core/utils/dateTime'
 
 const props = defineProps({
   mensaje : {
@@ -77,9 +78,36 @@ const props = defineProps({
 })
 defineEmits(['cerrar'])
 
+const designacionStore = useDesignacionStore()
+const deTexto = ref('No disponible')
+const paraTexto = ref('No disponible')
+
+async function cargarActores() {
+  const mensaje = props.mensaje
+  if (!mensaje) {
+    deTexto.value = 'No disponible'
+    paraTexto.value = 'No disponible'
+    return
+  }
+
+  const [origen, destino] = await Promise.all([
+    designacionStore.resolveActorByCasillaId(mensaje.casilla_origen_id),
+    designacionStore.resolveActorByCasillaId(mensaje.casilla_destino_id),
+  ])
+
+  // Evita pintar datos obsoletos si el usuario cambio de mensaje durante la carga.
+  if (props.mensaje?.id !== mensaje.id) return
+
+  deTexto.value = origen?.display_name || `Casilla ${mensaje.casilla_origen_id}`
+  paraTexto.value = destino?.display_name || `Casilla ${mensaje.casilla_destino_id}`
+}
+
+watch(() => props.mensaje?.id, () => {
+  cargarActores()
+}, { immediate: true })
+
 function formatFecha(fechaStr) {
-  if (!fechaStr) return ''
-  return format(new Date(fechaStr), 'dd/MM/yyyy HH:mm', { locale: es })
+  return formatDateTimeLima(fechaStr)
 }
 
 function prioridadTexto(prioridad) {

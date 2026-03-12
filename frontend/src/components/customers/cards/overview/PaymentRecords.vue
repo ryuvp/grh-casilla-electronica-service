@@ -90,21 +90,16 @@
   <!--end::Card-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import Datatable from "@/components/kt-datatable/KTDataTable.vue";
 
-export default defineComponent({
-  name: "payment-records",
-  props: {
-    cardClasses: String,
-  },
-  components: {
-    Datatable,
-  },
-  setup() {
-    const tableHeader = ref([
+defineProps({
+  cardClasses: String,
+});
+
+const tableHeader = ref([
       {
         columnName: "Invoice No.",
         columnLabel: "invoice",
@@ -132,7 +127,7 @@ export default defineComponent({
         sortEnabled: false,
       },
     ]);
-    const tableData = ref([
+const tableData = ref([
       {
         invoice:
           Math.floor(Math.random() * (9999 - 1000 + 1) + 1000) +
@@ -330,15 +325,11 @@ export default defineComponent({
       },
     ]);
 
-    const deleteRecord = (invoice: string) => {
-      for (let i = 0; i < tableData.value.length; i++) {
-        if (tableData.value[i].invoice === invoice) {
-          tableData.value.splice(i, 1);
-        }
-      }
-    };
-
-    return { tableHeader, tableData, deleteRecord, getAssetPath };
-  },
-});
+const deleteRecord = (invoice) => {
+  for (let i = 0; i < tableData.value.length; i++) {
+    if (tableData.value[i].invoice === invoice) {
+      tableData.value.splice(i, 1);
+    }
+  }
+};
 </script>

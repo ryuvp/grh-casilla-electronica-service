@@ -19,20 +19,7 @@
   <!--end::Toolbar-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script setup>
 import { toolbarWidthFluid } from "@/layouts/default-layout/config/helper";
 import KTPageTitle from "@/layouts/default-layout/components/toolbar/PageTitle.vue";
-
-export default defineComponent({
-  name: "layout-toolbar",
-  components: {
-    KTPageTitle,
-  },
-  setup() {
-    return {
-      toolbarWidthFluid,
-    };
-  },
-});
 </script>

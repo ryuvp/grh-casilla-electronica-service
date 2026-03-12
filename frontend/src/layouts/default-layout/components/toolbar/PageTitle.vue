@@ -48,8 +48,8 @@
   <!--end::Page title-->
 </template>
 
-<script lang="ts">
-import { computed, defineComponent } from "vue";
+<script setup>
+import { computed } from "vue";
 import {
   pageTitleBreadcrumbDisplay,
   pageTitleDirection,
@@ -57,27 +57,13 @@ import {
 } from "@/layouts/default-layout/config/helper";
 import { useRoute } from "vue-router";
 
-export default defineComponent({
-  name: "layout-page-title",
-  components: {},
-  setup() {
-    const route = useRoute();
+const route = useRoute();
 
-    const pageTitle = computed(() => {
-      return route.meta.pageTitle;
-    });
+const pageTitle = computed(() => {
+  return route.meta.pageTitle;
+});
 
-    const breadcrumbs = computed(() => {
-      return route.meta.breadcrumbs;
-    });
-
-    return {
-      pageTitle,
-      breadcrumbs,
-      pageTitleDisplay,
-      pageTitleBreadcrumbDisplay,
-      pageTitleDirection,
-    };
-  },
+const breadcrumbs = computed(() => {
+  return route.meta.breadcrumbs;
 });
 </script>

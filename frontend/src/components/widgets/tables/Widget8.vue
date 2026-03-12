@@ -127,17 +127,17 @@
   <!--end::Tables Widget 8-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script setup>
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-8",
-  components: {},
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    const items = [
+  });
+
+const items = [
       [
         {
           icon: {
@@ -280,9 +280,4 @@ export default defineComponent({
       ],
     ];
 
-    return {
-      items,
-    };
-  },
-});
 </script>

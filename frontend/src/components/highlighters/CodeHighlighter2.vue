@@ -54,43 +54,33 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onMounted, ref } from "vue";
+<script setup>
+import { computed, onMounted, ref } from "vue";
 import Prism from "prismjs";
 import { useCopyClipboard } from "@/core/helpers/system";
 
-export default defineComponent({
-  name: "CodeHighlighter",
-  props: {
-    fieldHeight: Number,
-  },
-  components: {},
-  setup(props) {
-    const height = ref(props.fieldHeight);
-
-    const getHeightInPixesls = computed(() => {
-      return height.value + "px";
-    });
-
-    const { init } = useCopyClipboard();
-
-    onMounted(() => {
-      Prism.highlightAll();
-      init();
-    });
-
-    const id = () => {
-      return Math.random().toString(36).substr(2, 9);
-    };
-
-    const htmlId = id();
-    const jsId = id();
-
-    return {
-      getHeightInPixesls,
-      htmlId,
-      jsId,
-    };
-  },
+const props = defineProps({
+  fieldHeight: Number,
 });
+
+const height = ref(props.fieldHeight);
+
+const getHeightInPixesls = computed(() => {
+  return height.value + "px";
+});
+
+const { init } = useCopyClipboard();
+
+onMounted(() => {
+  Prism.highlightAll();
+  init();
+});
+
+const id = () => {
+  return Math.random().toString(36).substr(2, 9);
+};
+
+const htmlId = id();
+const jsId = id();
+
 </script>

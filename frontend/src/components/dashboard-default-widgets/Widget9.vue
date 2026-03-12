@@ -36,25 +36,20 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent, onMounted, ref, watch } from "vue";
-import type { ApexOptions } from "apexcharts";
+import { computed, onMounted, ref, watch } from "vue";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
-import type VueApexCharts from "vue3-apexcharts";
 import { useThemeStore } from "@/stores/theme";
 
-export default defineComponent({
-  name: "default-dashboard-widget-9",
-  components: {},
-  props: {
-    className: { type: String, required: false },
-    height: { type: Number, required: true },
-  },
-  setup(props) {
-    const chartRef = ref<typeof VueApexCharts | null>(null);
-    const chart = ref<ApexOptions>({});
-    const store = useThemeStore();
+const props = defineProps({
+  className: { type: String, required: false },
+  height: { type: Number, required: true },
+});
+
+const chartRef = ref(null);
+const chart = ref({});
+const store = useThemeStore();
 
     const series = [
       {
@@ -73,36 +68,27 @@ export default defineComponent({
       },
     ];
 
-    const themeMode = computed(() => {
-      return store.mode;
-    });
-
-    onMounted(() => {
-      Object.assign(chart.value, chartOptions(props.height));
-    });
-
-    const refreshChart = () => {
-      if (!chartRef.value) {
-        return;
-      }
-
-      chartRef.value.updateOptions(chartOptions(props.height));
-    };
-
-    watch(themeMode, () => {
-      refreshChart();
-    });
-
-    return {
-      chart,
-      chartRef,
-      series,
-      getAssetPath,
-    };
-  },
+const themeMode = computed(() => {
+  return store.mode;
 });
 
-const chartOptions = (height: number): ApexOptions => {
+onMounted(() => {
+  Object.assign(chart.value, chartOptions(props.height));
+});
+
+const refreshChart = () => {
+  if (!chartRef.value) {
+    return;
+  }
+
+  chartRef.value.updateOptions(chartOptions(props.height));
+};
+
+watch(themeMode, () => {
+  refreshChart();
+});
+
+const chartOptions = (height) => {
   const labelColor = getCSSVariableValue("--bs-gray-500");
   const borderColor = getCSSVariableValue("--bs-border-dashed-color");
   const baseprimaryColor = getCSSVariableValue("--bs-primary");

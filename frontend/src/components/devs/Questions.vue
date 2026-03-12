@@ -152,33 +152,15 @@
   <!--end::Questions-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 
-interface IIcon {
-  name: string;
-  class: string;
-  tooltip: string;
-}
-
-interface IQuestion {
-  title: string;
-  summary: string;
-  author: string;
-  date: string;
-  avatar: string | undefined;
-  answers: string;
-  upvotes: string;
-  icons: Array<IIcon>;
-  tags: Array<string>;
-}
-
-export default defineComponent({
+defineOptions({
   name: "dev-questions",
-  components: {},
-  setup() {
-    const questions = ref<Array<IQuestion>>([
+});
+
+const questions = ref([
       {
         title: "How to use Metronic with Django Framework ?",
         summary:
@@ -293,11 +275,4 @@ export default defineComponent({
         tags: ["Aspdotnet"],
       },
     ]);
-
-    return {
-      questions,
-      getAssetPath,
-    };
-  },
-});
 </script>

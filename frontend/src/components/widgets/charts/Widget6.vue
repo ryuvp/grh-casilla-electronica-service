@@ -45,73 +45,63 @@
   <!--end::Charts Widget 6-->
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onBeforeMount, ref, watch } from "vue";
+<script setup>
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { useThemeStore } from "@/stores/theme";
-import type { ApexOptions } from "apexcharts";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
-import type VueApexCharts from "vue3-apexcharts";
-
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  props: {
-    widgetClasses: String,
-  },
-  components: {},
-  setup() {
-    const chartRef = ref<typeof VueApexCharts | null>(null);
-    const chart = ref<ApexOptions>({});
-    const store = useThemeStore();
-
-    const series = [
-      {
-        name: "Net Profit",
-        type: "bar",
-        stacked: true,
-        data: [40, 50, 65, 70, 50, 30],
-      },
-      {
-        name: "Revenue",
-        type: "bar",
-        stacked: true,
-        data: [20, 20, 25, 30, 30, 20],
-      },
-      {
-        name: "Expenses",
-        type: "area",
-        data: [50, 80, 60, 90, 50, 70],
-      },
-    ];
-
-    const themeMode = computed(() => {
-      return store.mode;
-    });
-
-    onBeforeMount(() => {
-      Object.assign(chart.value, chartOptions());
-    });
-
-    const refreshChart = () => {
-      if (!chartRef.value) {
-        return;
-      }
-
-      chartRef.value.updateOptions(chartOptions());
-    };
-
-    watch(themeMode, () => {
-      refreshChart();
-    });
-
-    return {
-      chart,
-      series,
-      chartRef,
-    };
-  },
 });
 
-const chartOptions = (): ApexOptions => {
+defineProps({
+  widgetClasses: String,
+});
+
+const chartRef = ref(null);
+const chart = ref({});
+const store = useThemeStore();
+
+const series = [
+  {
+    name: "Net Profit",
+    type: "bar",
+    stacked: true,
+    data: [40, 50, 65, 70, 50, 30],
+  },
+  {
+    name: "Revenue",
+    type: "bar",
+    stacked: true,
+    data: [20, 20, 25, 30, 30, 20],
+  },
+  {
+    name: "Expenses",
+    type: "area",
+    data: [50, 80, 60, 90, 50, 70],
+  },
+];
+
+const themeMode = computed(() => {
+  return store.mode;
+});
+
+onBeforeMount(() => {
+  Object.assign(chart.value, chartOptions());
+});
+
+const refreshChart = () => {
+  if (!chartRef.value) {
+    return;
+  }
+
+  chartRef.value.updateOptions(chartOptions());
+};
+
+watch(themeMode, () => {
+  refreshChart();
+});
+
+const chartOptions = () => {
   const labelColor = getCSSVariableValue("--bs-gray-500");
   const borderColor = getCSSVariableValue("--bs-gray-200");
 

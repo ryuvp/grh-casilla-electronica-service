@@ -32,15 +32,10 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "message-out",
-  props: {
-    image: String,
-    time: String,
-    text: String,
-  },
+<script setup>
+defineProps({
+  image: String,
+  time: String,
+  text: String,
 });
 </script>

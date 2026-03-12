@@ -33,6 +33,7 @@ Si dos documentos se contradicen, usar este orden:
   - `Proxima revision:`
 - Toda regla nueva debe reflejarse en el documento canonico correspondiente.
 - Contenido historico debe marcarse explicitamente como `Deprecado`.
+- Los fixes tecnicos resueltos deben documentarse en `docs/fixes` con formato `FIX-XXX_nombre_corto_del_bug.md`.
 
 ## Regla de calidad
 

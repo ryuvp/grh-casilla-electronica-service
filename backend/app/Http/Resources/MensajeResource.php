@@ -10,9 +10,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * 
  * Transforma el modelo Mensaje a JSON para respuestas API.
  * 
- * Incluye dos tipos de adjuntos:
+ * Incluye referencias tipadas asociadas al mensaje:
  * - archivo_ids: IDs de archivos en File Service (via relación adjuntos)
- * - sgd_referencias: Referencias a documentos SGD (via campo JSON sgd_referencias)
+ * - sgd_referencias: Referencias a documentos SGD
+ * - normatividad_referencias: Referencias normativas
  */
 class MensajeResource extends JsonResource
 {
@@ -56,10 +57,12 @@ class MensajeResource extends JsonResource
             'contenido'           => $this->contenido,
             'prioridad'           => $this->prioridad,
             'leido'               => $this->leido,
-            'fecha_envio'         => $this->fecha_envio,
-            'fecha_leido'         => $this->fecha_leido,
-            'usuario_origen_id'   => $this->usuario_origen_id,
-            'usuario_destino_id'  => $this->usuario_destino_id,
+            'destacado'           => $this->destacado,
+            'archivado'           => $this->archivado,
+            'created_at'          => $this->created_at,
+            'read_at'             => $this->read_at,
+            'casilla_origen_id'   => $this->casilla_origen_id,
+            'casilla_destino_id'  => $this->casilla_destino_id,
 
             // Referencias externas tipadas (fuente unica: tabla adjuntos).
             'archivo_ids'         => $archivoIds,

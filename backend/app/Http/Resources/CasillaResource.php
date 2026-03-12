@@ -17,9 +17,7 @@ class CasillaResource extends JsonResource
         return [
             'id'            => $this->id,
             'numero'        => $this->numero,
-            'titular_tipo'  => $this->titular_tipo,
-            'titular_id'    => $this->titular_id,
-            'tipo_nombre'   => $this->tipo_nombre,
+            'designacion_id'=> $this->designacion_id,
             'activo'        => $this->activo,
             'fecha_inicio'  => $this->fecha_inicio,
             'fecha_fin'     => $this->fecha_fin,

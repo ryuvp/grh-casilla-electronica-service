@@ -105,15 +105,9 @@
   <!--end::Modal - Invite Friend-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "lista-usuarios-modal",
-  components: {},
-  setup() {
-    const users = [
+const users = [
       {
         avatar: getAssetPath("media/avatars/300-6.jpg"),
         name: "Emma Smith",
@@ -217,11 +211,4 @@ export default defineComponent({
         access: "3",
       },
     ];
-
-    return {
-      users,
-      getAssetPath,
-    };
-  },
-});
 </script>

@@ -138,17 +138,6 @@
   <!--end::Timeline item-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "item-3",
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
-});
 </script>

@@ -121,20 +121,20 @@
   <!--end::Mixed Widget 14-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "widget-14",
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
     widgetColor: String,
-  },
-  setup() {
-    return {
+  });
+
+return {
       getAssetPath,
     };
-  },
-});
+
 </script>

@@ -197,23 +197,14 @@
   <!--end: List Widget 5-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
+<script setup>
 import Dropdown1 from "@/components/dropdown/Dropdown1.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-5",
-  props: {
-    widgetClasses: String,
-  },
-  components: {
-    Dropdown1,
-  },
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+});
+
+defineProps({
+  widgetClasses: String,
 });
 </script>

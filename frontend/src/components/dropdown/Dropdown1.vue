@@ -127,30 +127,13 @@
   <!--end::Menu 1-->
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from "vue";
+<script setup>
+import { ref } from "vue";
 
-interface Filter {
-  status: string;
-  author: boolean;
-  customer: boolean;
-  notifications: boolean;
-}
-
-export default defineComponent({
-  name: "dropdown-1",
-  components: {},
-  setup() {
-    const data = ref<Filter>({
-      status: "1",
-      author: true,
-      customer: true,
-      notifications: true,
-    });
-
-    return {
-      data,
-    };
-  },
+const data = ref({
+  status: "1",
+  author: true,
+  customer: true,
+  notifications: true,
 });
 </script>

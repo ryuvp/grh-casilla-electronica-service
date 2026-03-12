@@ -68,9 +68,8 @@
   <!--end::Header-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 import KTHeaderMenu from "@/layouts/default-layout/components/header/menu/MenuHome.vue";
 import KTHeaderNavbar from "@/layouts/default-layout/components/header/NavbarHome.vue";
 import {
@@ -81,23 +80,4 @@ import {
   headerDesktopFixed,
   headerMobileFixed,
 } from "@/layouts/default-layout/config/helper";
-
-export default defineComponent({
-  name       : "LayoutHeader",
-  components : {
-    KTHeaderMenu,
-    KTHeaderNavbar,
-  },
-  setup() {
-    return {
-      layout,
-      headerWidthFluid,
-      headerDisplay,
-      themeMode,
-      getAssetPath,
-      headerDesktopFixed,
-      headerMobileFixed,
-    };
-  },
-});
 </script>

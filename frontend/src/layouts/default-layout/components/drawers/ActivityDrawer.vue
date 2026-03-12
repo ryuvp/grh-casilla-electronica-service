@@ -71,9 +71,8 @@
   <!--end::Activities drawer-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 import Item1 from "@/components/activity-timeline-items/Item1.vue";
 import Item2 from "@/components/activity-timeline-items/Item2.vue";
 import Item3 from "@/components/activity-timeline-items/Item3.vue";
@@ -82,23 +81,4 @@ import Item5 from "@/components/activity-timeline-items/Item5.vue";
 import Item6 from "@/components/activity-timeline-items/Item6.vue";
 import Item7 from "@/components/activity-timeline-items/Item7.vue";
 import Item8 from "@/components/activity-timeline-items/Item8.vue";
-
-export default defineComponent({
-  name: "kt-activity-drawer",
-  components: {
-    Item1,
-    Item2,
-    Item3,
-    Item4,
-    Item5,
-    Item6,
-    Item7,
-    Item8,
-  },
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
-});
 </script>

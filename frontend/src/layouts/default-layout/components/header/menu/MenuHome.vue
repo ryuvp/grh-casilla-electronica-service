@@ -44,54 +44,42 @@
   <!--end::Menu wrapper-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { version } from "@/core/helpers/system";
 import { headerMenuDisplay } from "@/layouts/default-layout/config/helper";
 import { useAuthStore } from "@/stores/authStore";
 
-export default defineComponent({
-  name : "HeaderMenu",
-  setup() {
-    // Referencia reactiva para el usuario
-    const user = ref<any>(null);
-    const store = useAuthStore();
+// Referencia reactiva para el usuario
+const user = ref(null);
+const store = useAuthStore();
 
-    // Sincroniza el usuario desde localStorage o el store (igual que en Perfil.vue)
-    onMounted(() => {
-      const savedUser = localStorage.getItem("user");
-      if (savedUser) {
-        try {
-          user.value = JSON.parse(savedUser);
-        } catch {
-          user.value = store.user;
-        }
-      } else {
-        user.value = store.user;
-      }
-    });
+// Sincroniza el usuario desde localStorage o el store (igual que en Perfil.vue)
+onMounted(() => {
+  const savedUser = localStorage.getItem("user");
+  if (savedUser) {
+    try {
+      user.value = JSON.parse(savedUser);
+    } catch {
+      user.value = store.user;
+    }
+  } else {
+    user.value = store.user;
+  }
+});
 
-    // Computed para mostrar el nombre completo del usuario si existe
-    const userFullName = computed(() => {
-      if (user.value && user.value.nombre && user.value.apellido) {
-        return `${user.value.nombre} ${user.value.apellido}`;
-      }
-      if (user.value && user.value.nombre) {
-        return user.value.nombre;
-      }
-      if (user.value && user.value.email) {
-        return user.value.email;
-      }
-      return "";
-    });
-
-    return {
-      version,
-      headerMenuDisplay,
-      getAssetPath,
-      userFullName,
-    };
-  },
+// Computed para mostrar el nombre completo del usuario si existe
+const userFullName = computed(() => {
+  if (user.value && user.value.nombre && user.value.apellido) {
+    return `${user.value.nombre} ${user.value.apellido}`;
+  }
+  if (user.value && user.value.nombre) {
+    return user.value.nombre;
+  }
+  if (user.value && user.value.email) {
+    return user.value.email;
+  }
+  return "";
 });
 </script>

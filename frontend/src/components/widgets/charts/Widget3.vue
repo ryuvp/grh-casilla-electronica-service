@@ -1,61 +1,50 @@
 <template>
   <!--begin::Charts Widget 3-->
   <div :class="widgetClasses" class="card">
-    <!--begin::Header-->
-    <div class="card-header border-0 pt-5">
+    <script setup>
+    import { computed, onBeforeMount, ref, watch } from "vue";
       <h3 class="card-title align-items-start flex-column">
-        <span class="card-label fw-bold fs-3 mb-1">Recent Transactions</span>
 
-        <span class="text-muted fw-semibold fs-7"
-          >More than 1000 new records</span
-        >
-      </h3>
-
-      <!--begin::Toolbar-->
-      <div class="card-toolbar" data-kt-buttons="true">
-        <a
-          class="btn btn-sm btn-color-muted btn-active btn-active-primary active px-4 me-1"
-          id="kt_charts_widget_3_year_btn"
-          >Year</a
-        >
-
-        <a
-          class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4 me-1"
-          id="kt_charts_widget_3_month_btn"
-          >Month</a
-        >
-
-        <a
-          class="btn btn-sm btn-color-muted btn-active btn-active-primary px-4"
-          id="kt_charts_widget_3_week_btn"
-          >Week</a
-        >
-      </div>
-      <!--end::Toolbar-->
-    </div>
-    <!--end::Header-->
-
-    <!--begin::Body-->
-    <div class="card-body">
-      <!--begin::Chart-->
-      <apexchart
-        ref="chartRef"
-        type="area"
-        :options="chart"
-        :series="series"
-      ></apexchart>
-      <!--end::Chart-->
-    </div>
-    <!--end::Body-->
-  </div>
-  <!--end::Charts Widget 3-->
-</template>
-
-<script lang="ts">
+    defineOptions({
+      name: "widget-1",
 import { computed, defineComponent, onBeforeMount, ref, watch } from "vue";
+
+    defineProps({
+      widgetClasses: String,
+    });
+
+    const chartRef = ref(null);
+    const chart = ref({});
+    const store = useThemeStore();
+
+    const series = [
+      {
+        name: "Net Profit",
+        data: [30, 40, 40, 90, 90, 70, 70],
+      },
+    ];
+
+    const themeMode = computed(() => {
+      return store.mode;
+    });
+
+    onBeforeMount(() => {
+      Object.assign(chart.value, chartOptions());
+    });
+
+    const refreshChart = () => {
+      if (!chartRef.value) {
+        return;
+      }
+
+      chartRef.value.updateOptions(chartOptions());
+    };
+
+    watch(themeMode, () => {
+      refreshChart();
 import { useThemeStore } from "@/stores/theme";
 import type { ApexOptions } from "apexcharts";
-import { getCSSVariableValue } from "@/assets/ts/_utils";
+    const chartOptions = () => {
 import type VueApexCharts from "vue3-apexcharts";
 
 export default defineComponent({

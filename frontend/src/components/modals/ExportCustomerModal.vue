@@ -153,18 +153,14 @@
 }
 </style>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, reactive, ref, toRefs } from "vue";
+import { reactive, ref, toRefs } from "vue";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 
-export default defineComponent({
-  name: "export-customers-modal",
-  components: {},
-  setup() {
-    const formRef = ref<null | HTMLFormElement>(null);
-    const loading = ref<boolean>(false);
-    const state = reactive({
+const formRef = ref(null);
+const loading = ref(false);
+const state = reactive({
       shortcuts: [
         {
           text: "Última semana",
@@ -196,13 +192,13 @@ export default defineComponent({
       ],
     });
 
-    const formData = ref({
+const formData = ref({
       dateRange: [],
       exportFormat: "",
       paymentType: "",
     });
 
-    const rules = ref({
+const rules = ref({
       dateRange: [
         {
           required: true,
@@ -212,56 +208,46 @@ export default defineComponent({
       ],
     });
 
-    const submit = () => {
-      if (!formRef.value) {
-        return;
-      }
+const submit = () => {
+  if (!formRef.value) {
+    return;
+  }
 
-      formRef.value.validate((valid: boolean) => {
-        if (valid) {
-          loading.value = true;
+  formRef.value.validate((valid) => {
+    if (valid) {
+      loading.value = true;
 
-          setTimeout(() => {
-            loading.value = false;
+      setTimeout(() => {
+        loading.value = false;
 
-            Swal.fire({
-              text: "¡El formulario se ha enviado correctamente!",
-              icon: "success",
-              buttonsStyling: false,
-              confirmButtonText: "Ok, entendido",
-              heightAuto: false,
-              customClass: {
-                confirmButton: "btn btn-primary",
-              },
-            }).then(() => {
-              window.location.reload();
-            });
-          }, 2000);
-        } else {
-          Swal.fire({
-            text: "Lo sentimos, parece que hay algunos errores. Por favor, inténtalo de nuevo.",
-            icon: "error",
-            buttonsStyling: false,
-            confirmButtonText: "Ok, entendido",
-            heightAuto: false,
-            customClass: {
-              confirmButton: "btn btn-primary",
-            },
-          });
-          return false;
-        }
+        Swal.fire({
+          text: "¡El formulario se ha enviado correctamente!",
+          icon: "success",
+          buttonsStyling: false,
+          confirmButtonText: "Ok, entendido",
+          heightAuto: false,
+          customClass: {
+            confirmButton: "btn btn-primary",
+          },
+        }).then(() => {
+          window.location.reload();
+        });
+      }, 2000);
+    } else {
+      Swal.fire({
+        text: "Lo sentimos, parece que hay algunos errores. Por favor, inténtalo de nuevo.",
+        icon: "error",
+        buttonsStyling: false,
+        confirmButtonText: "Ok, entendido",
+        heightAuto: false,
+        customClass: {
+          confirmButton: "btn btn-primary",
+        },
       });
-    };
+      return false;
+    }
+  });
+};
 
-    return {
-      ...toRefs(state),
-      formData,
-      rules,
-      submit,
-      formRef,
-      loading,
-      getAssetPath,
-    };
-  },
-});
+const { shortcuts } = toRefs(state);
 </script>

@@ -109,21 +109,20 @@
   <!--end::Tables Widget 2-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
+
 import Dropdown1 from "@/components/dropdown/Dropdown1.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-2",
-  components: {
-    Dropdown1,
-  },
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    const items = [
+  });
+
+const items = [
       {
         image: getAssetPath("media/svg/brand-logos/plurk.svg"),
         info: {
@@ -190,10 +189,4 @@ export default defineComponent({
       },
     ];
 
-    return {
-      items,
-      getAssetPath,
-    };
-  },
-});
 </script>

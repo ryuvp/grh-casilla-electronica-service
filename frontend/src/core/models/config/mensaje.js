@@ -18,8 +18,9 @@ export default {
     contenido         : null,
     prioridad         : null,
     leido             : false,
-    usuario_origen_id : null,
-    fecha_envio       : null,
-    fecha_leido       : null,
+    casilla_origen_id : null,
+    casilla_destino_id : null,
+    created_at        : null,
+    read_at           : null,
   }
 }

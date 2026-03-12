@@ -46,9 +46,7 @@ Response ejemplo:
     {
       "id": 1,
       "numero": "CAS-001",
-      "titular_tipo": 1,
-      "titular_id": 25,
-      "tipo_nombre": "Usuario",
+      "designacion_id": 25,
       "activo": true,
       "fecha_inicio": "2026-01-01",
       "fecha_fin": null
@@ -64,8 +62,7 @@ Body:
 ```json
 {
   "numero": "CAS-001",
-  "titular_tipo": 1,
-  "titular_id": 25,
+  "designacion_id": 25,
   "activo": true,
   "fecha_inicio": "2026-01-01",
   "fecha_fin": null
@@ -100,8 +97,10 @@ Lista mensajes enviados por el usuario autenticado.
 Crea mensaje y opcionalmente adjuntos.
 
 Regla de negocio:
-- El destino debe ser un usuario con casilla activa.
+- El destino debe ser una casilla activa.
 - El mensaje puede contener archivos digitales y/o referencias externas (SGD, normatividad).
+- El envio es unidireccional (notificacion): no existe respuesta del destinatario.
+- Solo perfiles con rol `admin` o `notificador` pueden crear/enviar mensajes.
 
 Body:
 ```json
@@ -109,7 +108,7 @@ Body:
   "asunto": "Asunto",
   "contenido": "Contenido del mensaje",
   "prioridad": 3,
-  "usuario_destino_id": 17,
+  "casilla_destino_id": 17,
   "archivo_ids": [101, 102],
   "sgd_referencias": [
     {
@@ -143,20 +142,35 @@ Regla de negocio:
 
 Nota de autorizacion:
 - Restricciones por rol/permiso se aplican en frontend.
-- Backend no consulta permisos para ACL; valida token y consistencia del dato.
+- Backend no consulta permisos para ACL; valida token, casilla activa y consistencia del dato.
+
+### Modelo de actores para mensajeria
+
+- Casillas: se relacionan por `designacion_id`.
+- Mensajes: usan `casilla_origen_id` y `casilla_destino_id`.
+- Un usuario puede operar multiples casillas si tiene multiples designaciones activas.
+- El destinatario solo puede leer y marcar lectura del mensaje recibido.
 
 ### POST `/mensajes/{mensaje}/leido`
 Marca mensaje como leido.
 
 ### DELETE `/mensajes/{mensaje}`
-Elimina un mensaje de forma logica (soft delete).
+Operacion reservada (sin uso operativo actual).
 
 Regla de negocio:
-- Solo el usuario origen del mensaje puede eliminarlo.
+- En el modelo actual de notificaciones unidireccionales no se permite eliminar mensajes.
 
 Notas:
-- No se elimina fisicamente el registro.
-- El registro mantiene trazabilidad mediante `deleted_at`.
+- Se conserva como registro tecnico para una posible evolucion futura.
+- La API responde `405 Method Not Allowed`.
+
+### PUT/PATCH `/mensajes/{mensaje}`
+Operacion reservada (sin uso operativo actual).
+
+Notas:
+- En el modelo actual de notificaciones unidireccionales no se permite editar mensajes.
+- Se conserva como registro tecnico para una posible evolucion futura.
+- La API responde `405 Method Not Allowed`.
 
 ## 4. Errores estandar
 

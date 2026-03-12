@@ -75,40 +75,22 @@
   <!--end::Col-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script setup>
 import { DrawerComponent } from "@/assets/ts/components/_DrawerComponent";
 
-export default defineComponent({
-  name: "card-4",
-  components: {},
-  props: {
-    cardClasses: String,
-
-    avatar: String,
-
-    online: Boolean,
-
-    initials: String,
-
-    color: String,
-
-    name: String,
-
-    position: String,
-
-    avgEarnings: String,
-
-    totalSales: String,
-  },
-  setup() {
-    const openDrawer = () => {
-      DrawerComponent?.getInstance("kt_drawer_chat")?.toggle();
-    };
-
-    return {
-      openDrawer,
-    };
-  },
+defineProps({
+  cardClasses: String,
+  avatar: String,
+  online: Boolean,
+  initials: String,
+  color: String,
+  name: String,
+  position: String,
+  avgEarnings: String,
+  totalSales: String,
 });
+
+const openDrawer = () => {
+  DrawerComponent?.getInstance("kt_drawer_chat")?.toggle();
+};
 </script>

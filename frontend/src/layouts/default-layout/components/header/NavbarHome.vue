@@ -119,10 +119,10 @@
   <!--end::Navbar-->
 </template>
 
-<script lang="ts">
+<script setup>
 // Store para el modo de tema (oscuro/claro/sistema)
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent } from "vue";
+import { computed } from "vue";
 import KTSearch from "@/layouts/default-layout/components/search/Search.vue";
 import KTNotificationMenu from "@/layouts/default-layout/components/menus/NotificationsMenu.vue";
 import KTUserMenu from "@/layouts/default-layout/components/menus/UserAccountMenu.vue";
@@ -131,69 +131,48 @@ import { ThemeModeComponent } from "@/assets/ts/layout";
 import { useThemeStore } from "@/stores/theme";
 import useAuthStore from "@/stores/auth/authStore";
 
-export default defineComponent({
-  name: "header-navbar",
-  components: {
-    KTSearch,
-    KTNotificationMenu,
-    KTUserMenu,
-    KTThemeModeSwitcher,
-  },
-  setup() {
-    // Store para el modo de tema (oscuro/claro/sistema)
-    const store = useThemeStore();
-    // Store de autenticación para obtener el usuario
-    const authStore = useAuthStore();
+// Store para el modo de tema (oscuro/claro/sistema)
+const store = useThemeStore();
+// Store de autenticación para obtener el usuario
+const authStore = useAuthStore();
 
-    // Computed para el modo de tema actual
-    const themeMode = computed(() => {
-      if (store.mode === "system") {
-        return ThemeModeComponent.getSystemMode();
-      }
-      return store.mode;
-    });
-
-    // Computed para obtener el usuario actual, ya sea del store o de localStorage
-    const user = computed(() => {
-      // Si el usuario está en el store y tiene nombre, lo retorna
-      if (authStore.user && authStore.user.nombre) {
-        return authStore.user;
-      }
-      // Si no, intenta obtenerlo de localStorage
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        try {
-          return JSON.parse(savedUser);
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    });
-
-    /**
-     * Genera un color HSL consistente a partir de un string (nombre/email).
-     * Esto permite distinguir visualmente a los usuarios por su inicial.
-     * @param str - Cadena base para el color
-     * @returns Color HSL como string
-     */
-    function getColorFromString(str: string): string {
-      if (!str) return "#888";
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      const h = Math.abs(hash) % 360;
-      return `hsl(${h}, 70%, 50%)`;
-    }
-
-    // Exponer variables y funciones al template
-    return {
-      themeMode,
-      getAssetPath,
-      user,
-      getColorFromString,
-    };
-  },
+// Computed para el modo de tema actual
+const themeMode = computed(() => {
+  if (store.mode === "system") {
+    return ThemeModeComponent.getSystemMode();
+  }
+  return store.mode;
 });
+
+// Computed para obtener el usuario actual, ya sea del store o de localStorage
+const user = computed(() => {
+  // Si el usuario está en el store y tiene nombre, lo retorna
+  if (authStore.user && authStore.user.nombre) {
+    return authStore.user;
+  }
+  // Si no, intenta obtenerlo de localStorage
+  const savedUser = localStorage.getItem("user");
+  if (savedUser) {
+    try {
+      return JSON.parse(savedUser);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+});
+
+/**
+ * Genera un color HSL consistente a partir de un string (nombre/email).
+ * Esto permite distinguir visualmente a los usuarios por su inicial.
+ */
+function getColorFromString(str) {
+  if (!str) return "#888";
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 50%)`;
+}
 </script>

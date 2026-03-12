@@ -159,34 +159,18 @@
   <!--end::Chat drawer-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import MessageIn from "@/components/messenger-parts/MessageIn.vue";
 import MessageOut from "@/components/messenger-parts/MessageOut.vue";
 import Dropdown4 from "@/components/dropdown/Dropdown4.vue";
 
-interface KTMessage {
-  type: string;
-  name?: string;
-  image: string;
-  time: string;
-  text: string;
-}
+const messagesRef = ref(null);
+const messagesInRef = ref(null);
+const messagesOutRef = ref(null);
 
-export default defineComponent({
-  name: "upgrade-to-pro",
-  components: {
-    MessageIn,
-    MessageOut,
-    Dropdown4,
-  },
-  setup() {
-    const messagesRef = ref<null | HTMLElement>(null);
-    const messagesInRef = ref<null | HTMLElement>(null);
-    const messagesOutRef = ref<null | HTMLElement>(null);
-
-    const messages = ref<Array<KTMessage>>([
+const messages = ref([
       {
         type: "in",
         name: "Brian Cox",
@@ -235,52 +219,40 @@ export default defineComponent({
       },
     ]);
 
-    const newMessageText = ref("");
+const newMessageText = ref("");
 
-    const addNewMessage = () => {
-      if (!newMessageText.value) {
-        return;
+const addNewMessage = () => {
+  if (!newMessageText.value) {
+    return;
+  }
+  messages.value.push({
+    type: "out",
+    image: getAssetPath("media/avatars/300-1.jpg"),
+    time: "Just now",
+    text: newMessageText.value,
+  });
+
+  setTimeout(() => {
+    if (messagesRef.value) {
+      messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+    }
+  }, 1);
+
+  newMessageText.value = "";
+  setTimeout(() => {
+    messages.value.push({
+      type: "in",
+      name: "Ja Morant",
+      image: getAssetPath("media/avatars/300-25.jpg"),
+      time: "Just now",
+      text: "Thank you for your awesome support!",
+    });
+
+    setTimeout(() => {
+      if (messagesRef.value) {
+        messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
       }
-      messages.value.push({
-        type: "out",
-        image: getAssetPath("media/avatars/300-1.jpg"),
-        time: "Just now",
-        text: newMessageText.value,
-      });
-
-      setTimeout(() => {
-        if (messagesRef.value) {
-          messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
-        }
-      }, 1);
-
-      newMessageText.value = "";
-      setTimeout(() => {
-        messages.value.push({
-          type: "in",
-          name: "Ja Morant",
-          image: getAssetPath("media/avatars/300-25.jpg"),
-          time: "Just now",
-          text: "Thank you for your awesome support!",
-        });
-
-        setTimeout(() => {
-          if (messagesRef.value) {
-            messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
-          }
-        }, 1);
-      }, 2000);
-    };
-
-    return {
-      messages,
-      messagesRef,
-      newMessageText,
-      addNewMessage,
-      messagesInRef,
-      messagesOutRef,
-      getAssetPath,
-    };
-  },
-});
+    }, 1);
+  }, 2000);
+};
 </script>

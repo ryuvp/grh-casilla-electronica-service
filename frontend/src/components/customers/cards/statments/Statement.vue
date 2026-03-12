@@ -206,20 +206,15 @@
   <!--end::Statements-->
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from "vue";
+<script setup>
+import { ref } from "vue";
 import Datatable from "@/components/kt-datatable/KTDataTable.vue";
 
-export default defineComponent({
-  name: "statement-card",
-  props: {
-    cardClasses: String,
-  },
-  components: {
-    Datatable,
-  },
-  setup() {
-    const tableHeader = ref([
+defineProps({
+  cardClasses: String,
+});
+
+const tableHeader = ref([
       {
         columnName: "Date",
         columnLabel: "date",
@@ -246,7 +241,7 @@ export default defineComponent({
         sortEnabled: false,
       },
     ]);
-    const tableData1 = ref([
+const tableData1 = ref([
       {
         date: "Nov 01, 2020",
         order: "102445788",
@@ -347,7 +342,7 @@ export default defineComponent({
         },
       },
     ]);
-    const tableData2 = ref([
+  const tableData2 = ref([
       {
         date: "May 30, 2020",
         order: "523445943",
@@ -448,7 +443,7 @@ export default defineComponent({
         },
       },
     ]);
-    const tableData3 = ref([
+  const tableData3 = ref([
       {
         date: "Feb 09, 2020",
         order: "426445943",
@@ -549,7 +544,7 @@ export default defineComponent({
         },
       },
     ]);
-    const tableData4 = ref([
+  const tableData4 = ref([
       {
         date: "Nov 01, 2020",
         order: "102445788",
@@ -651,7 +646,5 @@ export default defineComponent({
       },
     ]);
 
-    return { tableHeader, tableData1, tableData2, tableData3, tableData4 };
-  },
-});
+// values are exposed automatically in <script setup>
 </script>

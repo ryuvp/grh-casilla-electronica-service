@@ -343,26 +343,21 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent, onMounted, ref, watch } from "vue";
-import type VueApexCharts from "vue3-apexcharts";
-import type { ApexOptions } from "apexcharts";
+import { computed, onMounted, ref, watch } from "vue";
 import { useThemeStore } from "@/stores/theme";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
 
-export default defineComponent({
-  name: "default-dashboard-widget-6",
-  components: {},
-  props: {
-    className: { type: String, required: false },
-    height: { type: String, required: false, default: "425px" },
-  },
-  setup(props) {
-    const chartRef1 = ref<typeof VueApexCharts | null>(null);
-    const chartRef2 = ref<typeof VueApexCharts | null>(null);
-    const chart = ref<ApexOptions>({});
-    const store = useThemeStore();
+const props = defineProps({
+  className: { type: String, required: false },
+  height: { type: String, required: false, default: "425px" },
+});
+
+const chartRef1 = ref(null);
+const chartRef2 = ref(null);
+const chart = ref({});
+const store = useThemeStore();
 
     const series1 = [
       {
@@ -418,39 +413,28 @@ export default defineComponent({
       },
     ];
 
-    const themeMode = computed(() => {
-      return store.mode;
-    });
-
-    onMounted(() => {
-      Object.assign(chart.value, chartOptions(props.height));
-    });
-
-    const refreshChart = () => {
-      if (!chartRef1.value || !chartRef2.value) {
-        return;
-      }
-
-      chartRef1.value.updateOptions(chartOptions(props.height));
-      chartRef2.value.updateOptions(chartOptions(props.height));
-    };
-
-    watch(themeMode, () => {
-      refreshChart();
-    });
-
-    return {
-      chart,
-      chartRef1,
-      chartRef2,
-      series1,
-      series2,
-      getAssetPath,
-    };
-  },
+const themeMode = computed(() => {
+  return store.mode;
 });
 
-const chartOptions = (height: string): ApexOptions => {
+onMounted(() => {
+  Object.assign(chart.value, chartOptions(props.height));
+});
+
+const refreshChart = () => {
+  if (!chartRef1.value || !chartRef2.value) {
+    return;
+  }
+
+  chartRef1.value.updateOptions(chartOptions(props.height));
+  chartRef2.value.updateOptions(chartOptions(props.height));
+};
+
+watch(themeMode, () => {
+  refreshChart();
+});
+
+const chartOptions = (height) => {
   const borderColor = getCSSVariableValue("--bs-border-dashed-color");
 
   return {

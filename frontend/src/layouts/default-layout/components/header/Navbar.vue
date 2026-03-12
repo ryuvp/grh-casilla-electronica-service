@@ -28,6 +28,12 @@
     <!--end::Theme mode-->
 
     <!--begin::User menu-->
+    <div class="app-navbar-item ms-1 ms-md-4 d-none d-md-flex align-items-center">
+      <div class="user-summary text-end">
+        <div class="fw-bold text-gray-900 text-uppercase lh-sm">{{ userDisplayName }}</div>
+        <div v-if="userCargoName" class="text-muted fs-8 lh-sm">{{ userCargoName }}</div>
+      </div>
+    </div>
     <div id="kt_header_user_menu_toggle" class="app-navbar-item ms-1 ms-md-4">
       <div
         class="cursor-pointer symbol symbol-35px"
@@ -74,9 +80,10 @@
 
 <script setup>
 // Imports
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useThemeStore } from "@/stores/theme";
 import useAuthStore from "@/stores/auth/authStore";
+import useDesignacionStore from "@/stores/designaciones/designacionStore";
 import { ThemeModeComponent } from "@/assets/ts/layout";
 import KTCustomize from "@/layouts/default-layout/components/extras/Customize.vue";
 import KTUserMenu from "@/layouts/default-layout/components/menus/UserAccountMenu.vue";
@@ -87,6 +94,8 @@ import avatarMujer from "@/assets/img/avatar-mujer.png";
 // Stores
 const themeStore = useThemeStore();
 const authStore = useAuthStore();
+const designacionStore = useDesignacionStore();
+const resumenUsuario = ref(null);
 
 // Modo de tema actual
 const themeMode = computed(() =>
@@ -97,6 +106,35 @@ const themeMode = computed(() =>
 
 // Usuario actual
 const user = computed(() => authStore.currentUser);
+const currentDesignacionId = computed(() =>
+  authStore.currentUser?.designacion_logeada?.id
+  || authStore.currentUser?.designacion_logeada_id
+  || authStore.currentUser?.designacion_id
+  || authStore.currentUser?.designaciones_activas?.[0]?.id
+  || authStore.currentUser?.designaciones?.[0]?.id
+  || null
+);
+const userDisplayName = computed(() =>
+  resumenUsuario.value?.usuario_nombre
+  || user.value?.nombre
+  || user.value?.name
+  || user.value?.email
+  || ''
+);
+const userCargoName = computed(() =>
+  resumenUsuario.value?.cargo_nombre
+  || user.value?.designacion_logeada?.cargo?.nombre
+  || ''
+);
+
+watch(currentDesignacionId, async (designacionId) => {
+  if (!designacionId) {
+    resumenUsuario.value = null;
+    return;
+  }
+
+  resumenUsuario.value = await designacionStore.fetchResumenByDesignacionId(designacionId);
+}, { immediate: true });
 
 // Generar color desde texto
 function getColorFromString(str) {
@@ -108,3 +146,9 @@ function getColorFromString(str) {
   return `hsl(${h}, 70%, 50%)`;
 }
 </script>
+
+<style scoped>
+.user-summary {
+  max-width: 280px;
+}
+</style>

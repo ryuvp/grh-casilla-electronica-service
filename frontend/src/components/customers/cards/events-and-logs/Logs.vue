@@ -68,18 +68,15 @@
   <!--end::Card-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 
-export default defineComponent({
-  name: "logs-card",
-  components: {},
-  props: {
-    cardClasses: String,
-  },
-  setup() {
-    const logs = ref([
+defineProps({
+  cardClasses: String,
+});
+
+const logs = ref([
       {
         code: "200 OK",
         color: "success",
@@ -153,11 +150,4 @@ export default defineComponent({
         date: "20 Dec 2021, 11:05 am",
       },
     ]);
-
-    return {
-      logs,
-      getAssetPath,
-    };
-  },
-});
 </script>

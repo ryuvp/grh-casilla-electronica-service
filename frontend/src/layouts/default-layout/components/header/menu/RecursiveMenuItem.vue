@@ -104,40 +104,28 @@
 </template>
 
   
-  <script lang="ts">
-  import { defineComponent } from "vue";
+  <script setup>
   import { useRoute } from "vue-router";
   import { useI18n } from "vue-i18n";
   import { headerMenuIcons } from "@/layouts/default-layout/config/helper";
-  
-  export default defineComponent({
-    name: "RecursiveMenuItem",
-    props: {
-      item: { type: Object, required: true },
-      isRoot: { type: Boolean, default: false },
-    },
-    setup(props) {
-      const route = useRoute();
-      const { t, te } = useI18n();
-  
-      const hasActiveChildren = (match?: string) => {
-        return !!match && route.path.includes(match);
-      };
-  
-      const translate = (text: string) => (te(text) ? t(text) : text);
-  
-      const hasChildren =
-        (props.item.pages && props.item.pages.length > 0) ||
-        (props.item.sub && props.item.sub.length > 0);
-  
-      return {
-        hasChildren,
-        hasActiveChildren,
-        translate,
-        headerMenuIcons,
-      };
-    },
-  });
+
+  const props = defineProps({
+    item   : { type: Object, required: true },
+    isRoot : { type: Boolean, default: false },
+  })
+
+  const route = useRoute();
+  const { t, te } = useI18n();
+
+  const hasActiveChildren = (match) => {
+    return !!match && route.path.includes(match);
+  };
+
+  const translate = (text) => (te(text) ? t(text) : text);
+
+  const hasChildren =
+    (props.item.pages && props.item.pages.length > 0) ||
+    (props.item.sub && props.item.sub.length > 0);
   </script>
   
   

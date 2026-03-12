@@ -19,6 +19,8 @@ use App\Http\Controllers\MensajeController;
 Route::middleware('remoteauth')->group(function () {
     Route::apiResource('/casillas', CasillaController::class);
     Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);
+    Route::get('/mensajes/destacados', [MensajeController::class, 'bandejaDestacados']);
+    Route::get('/mensajes/archivados', [MensajeController::class, 'bandejaArchivados']);
     Route::get('/mensajes/enviados', [MensajeController::class, 'bandejaEnviados']);
     Route::post('/mensajes', [MensajeController::class, 'store']);
     Route::get('/mensajes/{mensaje}', [MensajeController::class, 'show']);
@@ -26,4 +28,6 @@ Route::middleware('remoteauth')->group(function () {
     Route::patch('/mensajes/{mensaje}', [MensajeController::class, 'update']);
     Route::delete('/mensajes/{mensaje}', [MensajeController::class, 'destroy']);
     Route::post('/mensajes/{mensaje}/leido', [MensajeController::class, 'marcarLeido']);
+    Route::post('/mensajes/{mensaje}/destacar', [MensajeController::class, 'toggleDestacado']);
+    Route::post('/mensajes/{mensaje}/archivar', [MensajeController::class, 'toggleArchivado']);
 });

@@ -113,28 +113,26 @@
   <!--end::Mixed Widget 8-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
+
 import Dropdown2 from "@/components/dropdown/Dropdown2.vue";
 
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  components: {
-    Dropdown2,
-  },
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
     color: String,
     image: String,
     title: String,
     date: String,
     progress: String,
-  },
-  setup() {
-    return {
+  });
+
+return {
       getAssetPath,
     };
-  },
-});
+
 </script>

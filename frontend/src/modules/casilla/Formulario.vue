@@ -59,7 +59,6 @@ onMounted( async () => {
 });
 
 const abrir = () => {
-  console.log(formData.value)
   if (modal) modal.show();
 }
 const cerrar = () => {

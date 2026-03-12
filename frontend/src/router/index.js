@@ -3,7 +3,8 @@ import { useConfigStore } from "@/stores/config";
 import JwtService from "@/core/services/JwtService";
 import useAuthStore from "@/stores/auth/authStore";
 
-// Rutas
+// Definicion central de rutas de la aplicacion.
+// Estructura: layout de gestion, rutas privadas y layout de errores del sistema.
 const routes = [
   {
     path      : '/',
@@ -18,6 +19,18 @@ const routes = [
         meta      : { requiresAuth: true, pageTitle: "Bandeja de Entrada", breadcrumbs: ["Bandeja"] },
       },
       {
+        path      : 'destacados',
+        name      : 'Destacados',
+        component : () => import("@/views/Destacados/Destacados.vue"),
+        meta      : { requiresAuth: true, pageTitle: "Mensajes Destacados", breadcrumbs: ["Destacados"] },
+      },
+      {
+        path      : 'archivados',
+        name      : 'Archivados',
+        component : () => import("@/views/Archivados/Archivados.vue"),
+        meta      : { requiresAuth: true, pageTitle: "Mensajes Archivados", breadcrumbs: ["Archivados"] },
+      },
+      {
         path      : 'enviados',
         name      : 'Enviados',
         component : () => import("@/views/Enviados/Enviados.vue"),
@@ -29,7 +42,7 @@ const routes = [
         component : () => import("@/views/Casilla/Casilla.vue"),
         meta      : { requiresAuth: true, pageTitle: "Casilla", breadcrumbs: ["Casilla"] },
       },
-      // pública
+      // Ruta publica de carga inicial mientras se valida contexto de sesion.
       {
         path      : '/loading',
         name      : 'Loading',
@@ -39,7 +52,7 @@ const routes = [
     ],
   },
 
-  // Layout sistema
+  // Layout del sistema para paginas de error controlado.
   {
     path      : '/system',
     component : () => import("@/layouts/SystemLayout.vue"),
@@ -50,51 +63,65 @@ const routes = [
     ],
   },
 
+  // Fallback global para cualquier ruta inexistente.
   { path: "/:pathMatch(.*)*", redirect: "/system/404" },
 ];
 
+// Instancia del router usando historial HTML5.
 const router = createRouter({
   history : createWebHistory(),
   routes,
 });
 
-// Guard
+// Guard global: controla autenticacion, validacion de casilla y permisos por ruta.
 router.beforeEach(async (to, from, next) => {
-  const userStore = useAuthStore();
+  // Obtiene stores necesarios para autenticacion/autorizacion y configuracion visual.
+  const authStore = useAuthStore();
   const configStore = useConfigStore();
 
+  // Verifica presencia de token para decidir acceso a rutas privadas.
   const hasToken = JwtService.haveToken();
 
-  // Título y layout
+  // Actualiza metadatos visuales por navegacion.
   document.title = `${to.meta.pageTitle || ''} - ${import.meta.env.VITE_APP_NAME}`;
   configStore.resetLayoutConfig();
 
-  // Rutas públicas
+  // Determina si la ruta actual es publica o pertenece al modulo de errores.
   const publicRoutes = ['Home', '403', '404', '500', 'system', 'Loading'];
   const noRequierePermiso = publicRoutes.includes(to.name) || to.path.startsWith('/system');
 
-  // Si requiere auth
+  // Solo se ejecuta en rutas privadas.
   if (to.matched.some(r => r.meta.requiresAuth)) {
     if (!hasToken) {
-      // No fuerces logout aquí; solo bloquea
+      // Sin token no se intenta logout remoto: solo se bloquea acceso.
       return next({ path: '/system/403' });
     }
-    // Asegurar que el store esté listo antes de validar permisos
-    if (!userStore.isAuthReady) {
-      try { await userStore.validateToken(); }
-      finally { userStore.setAuthReady(true); }
+
+    // Inicializa contexto de autenticacion solo una vez por sesion activa.
+    if (!authStore.isAuthReady) {
+      try { await authStore.validateToken(); }
+      finally { authStore.setAuthReady(true); }
+    }
+
+    // Paso 1: validar que el usuario autenticado tenga casilla.
+    // Si no la tiene, el store intenta cerrar la pagina y se corta la navegacion.
+    const hasCasilla = await authStore.ensureUserHasCasilla();
+    if (!hasCasilla) {
+      return next(false);
     }
   }
 
   // Permisos por ruta (solo cuando corresponde)
   if (!noRequierePermiso && to.matched.some(r => r.meta.requiresAuth)) {
-    const rutasPermitidas = userStore.permisosRuta.map(p => p.ruta);
+    // El acceso se concede si la ruta actual coincide con alguna ruta permitida.
+    const rutasPermitidas = authStore.permisosRuta.map(p => p.ruta);
     const tieneAcceso = rutasPermitidas.some(ruta => to.path.startsWith(ruta));
     if (!tieneAcceso) {
       return next({ name: '403', replace: true });
     }
   }
 
+  // Continua navegacion cuando pasa todas las validaciones.
   next();
 });
 

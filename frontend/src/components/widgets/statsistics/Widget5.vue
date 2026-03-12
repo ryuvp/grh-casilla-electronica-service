@@ -21,25 +21,17 @@
   <!--end::Statistics Widget 5-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
-
-export default defineComponent({
+<script setup>
+defineOptions({
   name: "kt-widget-5",
-  props: {
-    widgetClasses: String,
-    color: String,
-    iconColor: String,
-    iconName: String,
-    title: String,
-    description: String,
-  },
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+});
+
+defineProps({
+  widgetClasses: String,
+  color: String,
+  iconColor: String,
+  iconName: String,
+  title: String,
+  description: String,
 });
 </script>

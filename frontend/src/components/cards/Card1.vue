@@ -108,70 +108,47 @@
   <!--end::Card-->
 </template>
 
-<script lang="ts">
-import { computed, defineComponent } from "vue";
+<script setup>
+import { computed } from "vue";
 
-export default defineComponent({
-  name: "card-1",
-  components: {},
-  props: {
-    progress: Number,
+const props = defineProps({
+  progress: Number,
+  statusDataBadgeColor: String,
+  statusDataColor: String,
+  status: String,
+  icon: String,
+  title: String,
+  description: String,
+  date: String,
+  budget: String,
+  users: Array,
+});
 
-    statusDataBadgeColor: String,
+const getDescription = computed(() => {
+  return props.description
+    ? props.description
+    : "CRM App application to HR efficiency";
+});
 
-    statusDataColor: String,
+const getDate = computed(() => {
+  return props.date ? props.date : "Feb 21, 2021";
+});
 
-    status: String,
+const getBudget = computed(() => {
+  return props.budget ? props.budget : "$284,900.00";
+});
 
-    icon: String,
+const getStatus = computed(() => {
+  return props.status ? props.status : "In Progress";
+});
 
-    title: String,
+const getStatusDataBadgeColor = computed(() => {
+  return props.statusDataBadgeColor
+    ? props.statusDataBadgeColor
+    : "badge-light-primary";
+});
 
-    description: String,
-
-    date: String,
-
-    budget: String,
-
-    users: Array as () => Array<any>,
-  },
-  setup(props) {
-    const getDescription = computed(() => {
-      return props.description
-        ? props.description
-        : "CRM App application to HR efficiency";
-    });
-
-    const getDate = computed(() => {
-      return props.date ? props.date : "Feb 21, 2021";
-    });
-
-    const getBudget = computed(() => {
-      return props.budget ? props.budget : "$284,900.00";
-    });
-
-    const getStatus = computed(() => {
-      return props.status ? props.status : "In Progress";
-    });
-
-    const getStatusDataBadgeColor = computed(() => {
-      return props.statusDataBadgeColor
-        ? props.statusDataBadgeColor
-        : "badge-light-primary";
-    });
-
-    const getStatusDataColor = computed(() => {
-      return props.statusDataColor ? props.statusDataColor : "bg-primary";
-    });
-
-    return {
-      getDescription,
-      getDate,
-      getBudget,
-      getStatus,
-      getStatusDataBadgeColor,
-      getStatusDataColor,
-    };
-  },
+const getStatusDataColor = computed(() => {
+  return props.statusDataColor ? props.statusDataColor : "bg-primary";
 });
 </script>

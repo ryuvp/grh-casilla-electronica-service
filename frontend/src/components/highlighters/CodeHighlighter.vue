@@ -21,35 +21,26 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onMounted, ref } from "vue";
+<script setup>
+import { computed, onMounted, ref } from "vue";
 import { useCopyClipboard } from "@/core/helpers/system";
 import Prism from "prismjs";
 
-export default defineComponent({
-  name: "CodeHighlighter",
-  props: {
-    lang: String,
-    fieldHeight: Number,
-  },
-  setup(props) {
-    const height = ref(props.fieldHeight);
+const props = defineProps({
+  lang: String,
+  fieldHeight: Number,
+});
 
-    const { init } = useCopyClipboard();
+const height = ref(props.fieldHeight);
 
-    const getHeightInPixesls = computed(() => {
-      return height.value + "px";
-    });
+const { init } = useCopyClipboard();
 
-    onMounted(() => {
-      Prism.highlightAll();
-      init();
-    });
+const getHeightInPixesls = computed(() => {
+  return height.value + "px";
+});
 
-    return {
-      getHeightInPixesls,
-    };
-  },
-  components: {},
+onMounted(() => {
+  Prism.highlightAll();
+  init();
 });
 </script>

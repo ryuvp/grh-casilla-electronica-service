@@ -169,21 +169,20 @@
   <!--end::Tables Widget 13-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import Dropdown2 from "@/components/dropdown/Dropdown2.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-12",
-  components: {
-    Dropdown2,
-  },
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    const checkedRows = ref<Array<number>>([]);
+  });
+
+const checkedRows = ref<Array<number>>([]);
     const list = [
       {
         orderid: "56037-XDER",
@@ -307,11 +306,4 @@ export default defineComponent({
       },
     ];
 
-    return {
-      list,
-      checkedRows,
-      getAssetPath,
-    };
-  },
-});
 </script>

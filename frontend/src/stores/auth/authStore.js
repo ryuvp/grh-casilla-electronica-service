@@ -2,22 +2,36 @@ import { defineStore } from "pinia";
 import JwtService from '@/core/services/JwtService';
 import createApiService from "@/core/services/ApiService";
 
+// Cliente para endpoints de autenticacion centralizados.
 const ApiService = createApiService(import.meta.env.VITE_AUTH_API);
+// Cliente para endpoints del servicio de casillas.
+const ApiCasillaService = createApiService(import.meta.env.VITE_API_URL);
+// Origen permitido para comunicacion segura con ventana padre.
 const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
 
+// Store de autenticacion/autorizacion y permisos del servicio actual.
 const useAuthStore = defineStore('auth', {
+  // Estado base de sesion y cache de validacion de casilla.
   state : () => ({
     isAuthenticated : JwtService.loggedIn() || false,
     userData        : JSON.parse(JwtService.getUserLogged()) || null,
     serviceName     : import.meta.env.VITE_SERVICE_NAME,
     isAuthReady     : false,
+    hasCasilla      : null,
+    casillaChecked  : false,
   }),
 
   getters : {
+    // Indica si existe una sesion autenticada en memoria.
     isLoggedIn  : state => state.isAuthenticated,
+
+    // Retorna el perfil completo del usuario autenticado.
     currentUser : state => state.userData,
+
+    // Retorna los roles asociados al usuario actual.
     roles       : state => state.userData?.roles || [],
 
+    // Filtra permisos de tipo servicio para el modulo activo.
     permisosServicio : state =>
       state.roles.flatMap(rol =>
         rol.permissions.filter(p =>
@@ -25,6 +39,7 @@ const useAuthStore = defineStore('auth', {
         )
       ) || [],
 
+    // Filtra permisos de tipo menu para construir navegacion.
     permisosMenu : state =>
       state.roles.flatMap(rol =>
         rol.permissions.filter(p =>
@@ -32,6 +47,7 @@ const useAuthStore = defineStore('auth', {
         )
       ) || [],
 
+    // Filtra permisos de tipo ruta usados por el router guard.
     permisosRuta : state =>
       state.roles.flatMap(rol =>
         rol.permissions.filter(p =>
@@ -39,6 +55,7 @@ const useAuthStore = defineStore('auth', {
         )
       ) || [],
 
+    // Filtra permisos de tipo accion para botones y operaciones UI.
     permisosAccion : state =>
       state.roles.flatMap(rol =>
         rol.permissions.filter(p =>
@@ -46,18 +63,46 @@ const useAuthStore = defineStore('auth', {
         )
       ) || [],
 
+    // Determina si el perfil puede crear/enviar notificaciones.
+    canWriteNotifications : state => {
+      const roleNames = (state.userData?.roles || [])
+        .map((rol) => String(rol?.name || rol?.nombre || rol?.descripcion || '').toLowerCase())
+
+      if (roleNames.some((name) => name.includes('admin') || name.includes('notificador'))) {
+        return true
+      }
+
+      const actionPermisos = (state.userData?.roles || []).flatMap((rol) =>
+        (rol?.permissions || []).filter((permiso) =>
+          permiso?.tipo_permiso === 2 && permiso?.nombre_servicio === state.serviceName
+        )
+      )
+
+      return actionPermisos.some((permiso) => {
+        const text = String(permiso?.descripcion || permiso?.nombre || permiso?.ruta || '').toLowerCase()
+        return (
+          (text.includes('mensaje') || text.includes('notificacion')) &&
+          (text.includes('crear') || text.includes('enviar') || text.includes('notificar'))
+        )
+      })
+    },
+
+    // Genera estructura del menu principal en base a permisos tipo menu.
     getMainMenuConfig(state) {
       const permisosMenu = state.roles.flatMap(rol =>
         rol.permissions.filter(p =>
           p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
         )
       ) || [];
-      //console.log("Generating main menu config for service:", permisosMenu);
       
+      // Permisos sin padre y con ruta se renderizan como accesos directos.
       const independientes = permisosMenu.filter(p => !p.permiso_padre_id && p.ruta);
+      // Permisos sin padre y sin ruta son contenedores de submenu.
       const padres = permisosMenu.filter(p => !p.permiso_padre_id && !p.ruta);
+      // Permisos con padre representan nodos hijos.
       const hijos = permisosMenu.filter(p => p.permiso_padre_id);
 
+      // Construye nodos recursivos para menus anidados.
       const buildRecursive = (padre) => {
         const children = hijos.filter(p => p.permiso_padre_id === padre.id);
         return {
@@ -69,6 +114,7 @@ const useAuthStore = defineStore('auth', {
         };
       };
 
+      // Acumula estructura final consumida por el layout.
       const menu = [];
 
       if (independientes.length) {
@@ -94,21 +140,26 @@ const useAuthStore = defineStore('auth', {
           pages          : hijosDirectos.map(buildRecursive),
         });
       });
-      //console.log("Generated menu:", menu)
+
       return menu;
     },
+
+    // Genera estructura del menu de cabecera con arbol de permisos.
     getHeaderMenuConfig : (state) => {
       const permisos = state.userData?.roles
         ?.flatMap((rol) =>
           rol.permissions.filter((permiso) => permiso.nombre_servicio === state.serviceName)
         ) || [];
     
+      // Solo se consideran permisos de menu para pintar navegacion.
       const permisosMenu = permisos.filter(p => p.tipo_permiso === 4);
     
+      // Clasifica nodos para construir jerarquia padre-hijo.
       const independientes = permisosMenu.filter(p => !p.permiso_padre_id && p.ruta);
       const padresRaiz = permisosMenu.filter(p => !p.permiso_padre_id && !p.ruta);
       const hijos = permisosMenu.filter(p => p.permiso_padre_id);
     
+      // Construye recursivamente submenus anidados.
       function buildRecursiveMenu(hijo) {
         const subHijos = hijos.filter(p => p.permiso_padre_id === hijo.id);
         return {
@@ -120,6 +171,7 @@ const useAuthStore = defineStore('auth', {
         };
       }
     
+      // Devuelve la configuracion final para el header menu.
       const menu = [];
     
       if (independientes.length) {
@@ -142,7 +194,7 @@ const useAuthStore = defineStore('auth', {
           route          : padre.ruta || "#",
           keenthemesIcon : "element-7",
           bootstrapIcon  : padre.icon || "bi-folder",
-          sub            : hijosDirectos.map(buildRecursiveMenu), // <--- aquí usamos `sub`
+          sub            : hijosDirectos.map(buildRecursiveMenu),
         });
       });
     
@@ -151,11 +203,80 @@ const useAuthStore = defineStore('auth', {
   },
 
   actions : {
+    // Cierra la pestana cuando falta casilla; si no es posible, navega a una pantalla en blanco.
+    closePageByMissingCasilla() {
+      try {
+        window.open('', '_self');
+        window.close();
+      } catch (error) {
+        console.warn('No se pudo cerrar la ventana automáticamente:', error);
+      }
+
+      setTimeout(() => {
+        if (!window.closed) {
+          window.location.replace('about:blank');
+        }
+      }, 150);
+    },
+
+    // Verifica existencia de casilla del usuario autenticado antes de permitir uso del modulo.
+    async ensureUserHasCasilla() {
+      // Evita consultas repetidas en la misma sesion.
+      if (this.casillaChecked) {
+        return !!this.hasCasilla;
+      }
+
+      const designacionId = this.userData?.designacion_logeada?.id
+        || this.userData?.designacion_logeada_id
+        || this.userData?.designacion_id
+        || this.userData?.designaciones_activas?.[0]?.id
+        || this.userData?.designaciones?.[0]?.id;
+
+      if (!designacionId) {
+        // Sin designacion activa valida, se considera estado no habilitado para operar.
+        this.hasCasilla = false;
+        this.casillaChecked = true;
+        this.closePageByMissingCasilla();
+        return false;
+      }
+
+      try {
+        // Consulta minima: solo verifica existencia con una pagina de 1 elemento.
+        const response = await ApiCasillaService.get('/casillas', {
+          designacion_id : designacionId,
+          per_page       : 1,
+          page           : 1,
+        });
+
+        const casillas = response?.data?.data || [];
+        const existeCasilla = Array.isArray(casillas) && casillas.length > 0;
+
+        this.hasCasilla = existeCasilla;
+        this.casillaChecked = true;
+
+        if (!existeCasilla) {
+          this.closePageByMissingCasilla();
+        }
+
+        return existeCasilla;
+      } catch (error) {
+        // Ante error de red/API se bloquea el acceso por seguridad operativa.
+        console.error('Error validando casilla del usuario:', error);
+        this.hasCasilla = false;
+        this.casillaChecked = true;
+        this.closePageByMissingCasilla();
+        return false;
+      }
+    },
+
+    // Valida token remoto y sincroniza datos de usuario en el store.
     async validateToken() {
       try {
-        // 1. Obtener datos de usuario
+        // 1) Obtiene el usuario autenticado desde el servicio de auth.
         const { data } = await ApiService.get('/usuario');
         JwtService.saveUserLogged(data);
+
+        // 2) Actualiza estado local para habilitar rutas privadas.
         this.$patch({
           isAuthenticated : true,
           userData        : data
@@ -166,60 +287,51 @@ const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Ejecuta cierre de sesion remoto y limpia estado/token local.
     async logout() {
       try {
         await ApiService.post('/logout');
       } catch (err) {
         console.warn("Logout remoto fallido:", err);
       } finally {
-        // Sincronización y limpieza
+        // Sincronizacion y limpieza de credenciales compartidas.
         localStorage.setItem("cerrar-hijas", Date.now().toString());
         JwtService.destroyToken();
         JwtService.destroyUserLogged();
-        //sessionStorage.clear();
-        //localStorage.clear();
 
+        // Resetea estado de autenticacion y cache de casilla.
         this.$patch({
           isAuthenticated : false,
           userData        : null,
+          hasCasilla      : null,
+          casillaChecked  : false,
         });
 
-        // Limpiar cookies
-        //document.cookie.split(";").forEach(c => {
-        //  document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-        //});
-
-        // Notificar al padre si existe
+        // Notifica a ventana padre para sincronizar logout entre contextos embebidos.
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({ type: "LOGOUT" }, allowedOrigin);
         }
-
-        /* window.close();
-        setTimeout(() => {
-          if (!window.closed) window.location.href = "/login";
-        }, 200); */
       }
     },
 
+    // Marca si el proceso inicial de autenticacion ya fue ejecutado en el ciclo actual.
     setAuthReady(status) {
       this.isAuthReady = status;
     },
-    // AGREGAR: Método para debugging de permisos
+
+    // Diagnostica diferencias entre permisos locales y permisos reportados por backend.
     async debugPermisos() {
-      
-      // Verificar si hay más permisos en el backend
+      // Verifica permisos reales del backend para detectar desincronizacion.
       try {
         const token = JwtService.getToken();
         if (token) {
-          
-          // Llamada directa al endpoint de permisos
+          // Consulta endpoint de permisos para comparacion tecnica.
           const response = await ApiService.get('/user-permissions');
-          
-          // Actualizar permisos si hay más de los que ya tenemos
+
+          // Refresca permisos de accion si backend reporta mayor cobertura.
           if (response.data.length > (this.permisosAccion?.length || 0)) {
             this.permisosAccion = response.data;
           }
-
         }
       } catch (error) {
         console.error('❌ Error verificando permisos en backend:', error);

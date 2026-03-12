@@ -38,108 +38,90 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, onMounted, ref, watch } from "vue";
+<script setup>
+import { onMounted, ref, watch } from "vue";
 import TableHeadRow from "@/components/kt-datatable/table-partials/table-content/table-head/TableHeadRow.vue";
 import TableBodyRow from "@/components/kt-datatable/table-partials/table-content/table-body/TableBodyRow.vue";
 import Loading from "@/components/kt-datatable/table-partials/Loading.vue";
-import type { Sort } from "@/components/kt-datatable/table-partials/models";
-
-export default defineComponent({
-  name: "table-body",
-  props: {
-    header: { type: Array, required: true },
-    data: { type: Array, required: true },
-    emptyTableText: { type: String, default: "No data found" },
-    sortLabel: { type: String, required: false, default: null },
-    sortOrder: {
-      type: String as () => "asc" | "desc",
-      required: false,
-      default: "asc",
-    },
-    checkboxEnabled: { type: Boolean, required: false, default: false },
-    checkboxLabel: { type: String, required: false, default: "id" },
-    loading: { type: Boolean, required: false, default: false },
+const props = defineProps({
+  header: { type: Array, required: true },
+  data: { type: Array, required: true },
+  emptyTableText: { type: String, default: "No data found" },
+  sortLabel: { type: String, required: false, default: null },
+  sortOrder: {
+    type: String,
+    required: false,
+    default: "asc",
   },
-  emits: ["on-sort", "on-items-select"],
-  components: {
-    TableHeadRow,
-    TableBodyRow,
-    Loading,
-  },
-  setup(props, { emit }) {
-    const selectedItems = ref<Array<unknown>>([]);
-    const allSelectedItems = ref<Array<unknown>>([]);
-    const check = ref<boolean>(false);
+  checkboxEnabled: { type: Boolean, required: false, default: false },
+  checkboxLabel: { type: String, required: false, default: "id" },
+  loading: { type: Boolean, required: false, default: false },
+});
 
-    watch(
-      () => props.data,
-      () => {
-        selectedItems.value = [];
-        allSelectedItems.value = [];
-        check.value = false;
-        // eslint-disable-next-line
-        props.data.forEach((item: any) => {
-          if (item[props.checkboxLabel]) {
-            allSelectedItems.value.push(item[props.checkboxLabel]);
-          }
-        });
-      }
-    );
+const emit = defineEmits(["on-sort", "on-items-select"]);
 
+const selectedItems = ref([]);
+const allSelectedItems = ref([]);
+const check = ref(false);
+
+watch(
+  () => props.data,
+  () => {
+    selectedItems.value = [];
+    allSelectedItems.value = [];
+    check.value = false;
     // eslint-disable-next-line
-    const selectAll = (checked: any) => {
-      check.value = checked;
-      if (checked) {
-        selectedItems.value = [
-          ...new Set([...selectedItems.value, ...allSelectedItems.value]),
-        ];
-      } else {
-        selectedItems.value = [];
+    props.data.forEach((item) => {
+      if (item[props.checkboxLabel]) {
+        allSelectedItems.value.push(item[props.checkboxLabel]);
       }
-    };
-
-    //eslint-disable-next-line
-    const itemsSelect = (value: any) => {
-      selectedItems.value = [];
-      //eslint-disable-next-line
-      value.forEach((item:any) => {
-        if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
-      });
-    };
-
-    const onSort = (sort: Sort) => {
-      emit("on-sort", sort);
-    };
-
-    watch(
-      () => [...selectedItems.value],
-      (currentValue) => {
-        if (currentValue) {
-          emit("on-items-select", currentValue);
-        }
-      }
-    );
-
-    onMounted(() => {
-      selectedItems.value = [];
-      allSelectedItems.value = [];
-      check.value = false;
-      // eslint-disable-next-line
-      props.data.forEach((item: any) => {
-        if (item[props.checkboxLabel]) {
-          allSelectedItems.value.push(item[props.checkboxLabel]);
-        }
-      });
     });
+  }
+);
 
-    return {
-      onSort,
-      selectedItems,
-      selectAll,
-      itemsSelect,
-      check,
-    };
-  },
+// eslint-disable-next-line
+const selectAll = (checkedVal) => {
+  check.value = checkedVal;
+  if (checkedVal) {
+    selectedItems.value = [
+      ...new Set([...selectedItems.value, ...allSelectedItems.value]),
+    ];
+  } else {
+    selectedItems.value = [];
+  }
+};
+
+//eslint-disable-next-line
+const itemsSelect = (value) => {
+  selectedItems.value = [];
+  //eslint-disable-next-line
+  value.forEach((item) => {
+    if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
+  });
+};
+
+const onSort = (sort) => {
+  emit("on-sort", sort);
+};
+
+watch(
+  () => [...selectedItems.value],
+  (currentValue) => {
+    if (currentValue) {
+      emit("on-items-select", currentValue);
+    }
+  }
+);
+
+onMounted(() => {
+  selectedItems.value = [];
+  allSelectedItems.value = [];
+  check.value = false;
+  // eslint-disable-next-line
+  props.data.forEach((item) => {
+    if (item[props.checkboxLabel]) {
+      allSelectedItems.value.push(item[props.checkboxLabel]);
+    }
+  });
 });
 </script>

@@ -39,20 +39,10 @@
   <!--end::Card-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "credit-bilance",
-  props: {
-    cardClasses: String,
-  },
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+defineProps({
+  cardClasses: String,
 });
 </script>

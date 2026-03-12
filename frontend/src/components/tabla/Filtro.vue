@@ -378,22 +378,6 @@ function filtrarItems() {
             .filter(v => v != null)
             .some(v => normalize(String(v)).includes(term));
         }
-      } else {
-        // Compatibilidad para searchField como string
-        const fieldValue = typeof searchFieldModel.value === 'string' 
-          ? searchFieldModel.value 
-          : (searchFieldModel.value.length > 0 ? searchFieldModel.value[0] : 'all');
-          
-        if (fieldValue === 'all') {
-          // Búsqueda en todos los campos
-          matchText = Object.values(item)
-            .filter(v => v != null)
-            .some(v => normalize(String(v)).includes(term));
-        } else {
-          // Búsqueda en campo específico
-          const valor = getNestedValue(item, fieldValue);
-          matchText = valor != null ? normalize(String(valor)).includes(term) : false;
-        }
       }
     }
     

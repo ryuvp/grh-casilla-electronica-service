@@ -180,39 +180,26 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import { hideModal } from "@/core/helpers/modal";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 
-interface NewAddressData {
-  eventName: string;
-  eventDescription: string;
-  eventLocation: string;
-  allDay: boolean;
-  eventStartDate: string;
-  eventEndDate: string;
-}
+const formRef = ref(null);
+const newTargetModalRef = ref(null);
+const loading = ref(false);
 
-export default defineComponent({
-  name: "new-event-modal",
-  components: {},
-  setup() {
-    const formRef = ref<null | HTMLFormElement>(null);
-    const newTargetModalRef = ref<null | HTMLElement>(null);
-    const loading = ref<boolean>(false);
+const targetData = ref({
+  eventName: "",
+  eventDescription: "",
+  eventLocation: "",
+  allDay: true,
+  eventStartDate: "",
+  eventEndDate: "",
+});
 
-    const targetData = ref<NewAddressData>({
-      eventName: "",
-      eventDescription: "",
-      eventLocation: "",
-      allDay: true,
-      eventStartDate: "",
-      eventEndDate: "",
-    });
-
-    const rules = ref({
+const rules = ref({
       eventName: [
         {
           required: true,
@@ -222,14 +209,14 @@ export default defineComponent({
       ],
     });
 
-    const submit = () => {
-      if (!formRef.value) {
-        return;
-      }
+const submit = () => {
+  if (!formRef.value) {
+    return;
+  }
 
-      formRef.value.validate((valid: boolean) => {
-        if (valid) {
-          loading.value = true;
+  formRef.value.validate((valid) => {
+    if (valid) {
+      loading.value = true;
 
           setTimeout(() => {
             loading.value = false;
@@ -247,33 +234,21 @@ export default defineComponent({
               hideModal(newTargetModalRef.value);
             });
           }, 2000);
-        } else {
-          Swal.fire({
-            text: "Sorry, looks like there are some errors detected, please try again.",
-            icon: "error",
-            buttonsStyling: false,
-            confirmButtonText: "Ok, got it!",
-            heightAuto: false,
-            customClass: {
-              confirmButton: "btn btn-primary",
-            },
-          });
-          return false;
-        }
+    } else {
+      Swal.fire({
+        text: "Sorry, looks like there are some errors detected, please try again.",
+        icon: "error",
+        buttonsStyling: false,
+        confirmButtonText: "Ok, got it!",
+        heightAuto: false,
+        customClass: {
+          confirmButton: "btn btn-primary",
+        },
       });
-    };
-
-    return {
-      formRef,
-      newTargetModalRef,
-      loading,
-      targetData,
-      rules,
-      submit,
-      getAssetPath,
-    };
-  },
-});
+      return false;
+    }
+  });
+};
 </script>
 
 <style lang="scss">

@@ -273,37 +273,25 @@
 }
 </style>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import { hideModal } from "@/core/helpers/modal";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 
-interface NewAddressData {
-  nombre: string;
-  asignacion: string;
-  fecha: string;
-  detalles: string;
-  etiquetas: Array<string>;
-}
+const formRef = ref(null);
+const newTargetModalRef = ref(null);
+const loading = ref(false);
 
-export default defineComponent({
-  name: "new-target-modal",
-  components: {},
-  setup() {
-    const formRef = ref<null | HTMLFormElement>(null);
-    const newTargetModalRef = ref<null | HTMLElement>(null);
-    const loading = ref<boolean>(false);
+const modalejemplo = ref({
+  nombre: "",
+  asignacion: "",
+  fecha: "",
+  detalles: "",
+  etiquetas: ["important", "urgent"],
+});
 
-    const modalejemplo = ref<NewAddressData>({
-      nombre: "",
-      asignacion: "",
-      fecha: "",
-      detalles: "",
-      etiquetas: ["important", "urgent"],
-    });
-
-    const rules = ref({
+const rules = ref({
       nombre: [
         {
           required: true,
@@ -334,14 +322,14 @@ export default defineComponent({
       ],
     });
 
-    const submit = () => {
-      if (!formRef.value) {
-        return;
-      }
+const submit = () => {
+  if (!formRef.value) {
+    return;
+  }
 
-      formRef.value.validate((valid: boolean) => {
-        if (valid) {
-          loading.value = true;
+  formRef.value.validate((valid) => {
+    if (valid) {
+      loading.value = true;
 
           setTimeout(() => {
             loading.value = false;
@@ -359,33 +347,21 @@ export default defineComponent({
               hideModal(newTargetModalRef.value);
             });
           }, 2000);
-        } else {
-          Swal.fire({
-            text: "Lo sentimos, parece que hay algunos errores. Por favor, inténtalo de nuevo.",
-            icon: "error",
-            buttonsStyling: false,
-            confirmButtonText: "Ok, entendido",
-            heightAuto: false,
-            customClass: {
-              confirmButton: "btn btn-primary",
-            },
-          });
-          return false;
-        }
+    } else {
+      Swal.fire({
+        text: "Lo sentimos, parece que hay algunos errores. Por favor, inténtalo de nuevo.",
+        icon: "error",
+        buttonsStyling: false,
+        confirmButtonText: "Ok, entendido",
+        heightAuto: false,
+        customClass: {
+          confirmButton: "btn btn-primary",
+        },
       });
-    };
-
-    return {
-      modalejemplo,
-      submit,
-      loading,
-      formRef,
-      rules,
-      newTargetModalRef,
-      getAssetPath,
-    };
-  },
-});
+      return false;
+    }
+  });
+};
 </script>
 
 <style lang="scss">

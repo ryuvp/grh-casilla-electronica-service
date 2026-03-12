@@ -1,15 +1,27 @@
 <template>
-  <div ref="containerRef" class="d-flex position-relative" style="height: 100%;">
+  <div ref="containerRef" class="bandeja-layout d-flex position-relative w-100">
 
     <!-- Panel izquierdo (Filtro + Lista) -->
-    <div ref="leftPanel" :style="{ width: leftWidth + 'px' }" class="border-end pe-3 bg-white">
+    <div
+      ref="leftPanel"
+      :style="{ width: leftWidth + 'px' }"
+      class="border-end pe-3 bg-white d-flex flex-column h-100 overflow-hidden"
+    >
       <Filtro
         :filtro="filtro"
-        :orden="orden"
         @update-filtro="filtro = $event"
-        @update-orden="orden = $event"
       />
-      <Lista :mensajes="mensajesFiltrados" :selected="selected" @seleccionar="seleccionarMensaje" />
+
+      <!-- La lista toma el alto restante del panel izquierdo. -->
+      <Lista
+        class="flex-grow-1 min-h-0"
+        :mensajes="mensajesFiltrados"
+        :pagination="store.pagination"
+        :selected="selected"
+        @seleccionar="seleccionarMensaje"
+        @page-change="handlePageChange"
+        @items-per-page-change="handleSizeChange"
+      />
     </div>
 
     <!-- Separador -->
@@ -20,50 +32,90 @@
     ></div>
 
     <!-- Panel derecho (Contenido) -->
-    <div class="flex-grow-1 ps-3 bg-white">
-      <Contenido :mensaje="selected" @cerrar="selected = null" />
+    <div class="flex-grow-1 ps-3 bg-white h-100 overflow-auto">
+      <Contenido
+        :mensaje="selected"
+        :tray-type="trayType"
+        @cerrar="selected = null"
+        @mensaje-cambiado="refrescarBandeja"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, computed, onMounted } from 'vue'
+import { ref, onBeforeUnmount, computed, onMounted, watch } from 'vue'
 import Filtro from './Filtro.vue'
 import Lista from './Lista.vue'
 import Contenido from './Contenido.vue'
 
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
+
+const props = defineProps({
+  trayType : {
+    type    : String,
+    default : 'entrada'
+  }
+})
+
+// Store central de mensajes para bandeja de entrada.
 const store = useMensajesStore()
 
+// Carga inicial de mensajes al montar la vista.
 onMounted(async () => {
-  await store.fetchMensajes('entrada');
-  console.log(store.mensajes);  // Cargar mensajes de la bandeja de entrada
-});
+  await cargarBandeja()
+})
 
+watch(() => props.trayType, async () => {
+  selected.value = null
+  await cargarBandeja({ page: 1 })
+})
+
+// Mensaje activo mostrado en el panel derecho.
 const selected = ref(null)
 
+// Estado local de filtros de la bandeja.
 const filtro = ref('')
-const orden = ref('fecha')
 
+// Filtra por asunto; el orden se resuelve en TablaBackend.
 const mensajesFiltrados = computed(() => {
   return store.mensajes
     .filter(m => m.asunto.toLowerCase().includes(filtro.value.toLowerCase()))
-    .sort((a, b) => {
-      if (orden.value === 'fecha') return new Date(b.fecha) - new Date(a.fecha)
-      if (orden.value === 'asunto') return a.asunto.localeCompare(b.asunto)
-      return 0
-    })
 })
 
+// Selecciona mensaje y marca como leido si aun no fue abierto.
 function seleccionarMensaje(mensaje) {
   selected.value = mensaje
 
   if (!mensaje.leido) {
-    store.marcarLeido(mensaje.id);
+    store.marcarLeido(mensaje.id)
   }
 }
 
-// Resize logic
+async function cargarBandeja(extraParams = {}) {
+  const params = {
+    page     : extraParams.page || store.pagination.current_page || 1,
+    per_page : extraParams.per_page || store.pagination.per_page || 10,
+  }
+
+  await store.fetchMensajes(props.trayType, params)
+  await store.fetchCounts()
+}
+
+async function refrescarBandeja() {
+  await cargarBandeja({ page: 1, per_page: store.pagination.per_page })
+  selected.value = null
+}
+
+async function handlePageChange(page) {
+  await cargarBandeja({ page })
+}
+
+async function handleSizeChange(perPage) {
+  await cargarBandeja({ page: 1, per_page: perPage })
+}
+
+// Referencias y estado para redimensionar paneles.
 const containerRef = ref(null)
 const leftPanel = ref(null)
 const resizer = ref(null)
@@ -71,12 +123,14 @@ const leftWidth = ref(400) // ancho inicial en px
 
 let isResizing = false
 
+// Inicia el modo de redimension y sus listeners globales.
 function startResizing() {
   isResizing = true
   document.addEventListener('mousemove', resize)
   document.addEventListener('mouseup', stopResizing)
 }
 
+// Ajusta ancho del panel izquierdo dentro de limites operativos.
 function resize(e) {
   if (!isResizing || !containerRef.value) return
   const containerLeft = containerRef.value.getBoundingClientRect().left
@@ -86,16 +140,24 @@ function resize(e) {
   }
 }
 
+// Finaliza redimension y libera listeners para evitar fugas.
 function stopResizing() {
   isResizing = false
   document.removeEventListener('mousemove', resize)
   document.removeEventListener('mouseup', stopResizing)
 }
 
+// Limpieza de listeners al desmontar la vista.
 onBeforeUnmount(() => stopResizing())
 </script>
 
 <style scoped>
+/* Usa toda la altura util del viewport dentro del layout (sin fullscreen real). */
+.bandeja-layout {
+  height: calc(100dvh - 145px);
+  min-height: 540px;
+}
+
 .resizer {
   width: 6px;
   cursor: col-resize;

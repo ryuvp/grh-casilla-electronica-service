@@ -27,27 +27,33 @@ class Mensaje extends Model
         'prioridad',
         'contenido',
         'leido',
-        'usuario_origen_id',
-        'usuario_destino_id',
-        'fecha_envio',
-        'fecha_leido',
+        'destacado',
+        'archivado',
+        'casilla_origen_id',
+        'casilla_destino_id',
+        'read_at',
     ];
 
     protected $filters = [
         'asunto',
         'prioridad',
         'contenido',
-        'ususario_origen_id',
-        'fecha_envio',
-        'fecha_leido',
+        'destacado',
+        'archivado',
+        'casilla_origen_id',
+        'casilla_destino_id',
+        'created_at',
+        'read_at',
     ];
 
     /**
      * Casts de fechas para serializacion consistente.
      */
     protected $casts = [
-        'fecha_envio' => 'datetime',
-        'fecha_leido' => 'datetime',
+        'created_at' => 'datetime',
+        'read_at' => 'datetime',
+        'destacado' => 'boolean',
+        'archivado' => 'boolean',
     ];
 
     /**
@@ -64,8 +70,7 @@ class Mensaje extends Model
         'sgd_referencias'      => 'nullable|array',
         'sgd_referencias.*.documento_id' => 'required|integer',
         'sgd_referencias.*.tipo'         => 'required|string|max:100',
-        'usuario_destino_id'   => 'required|integer',
-        'fecha_envio'          => 'nullable|date',
+        'casilla_destino_id'            => 'required|integer|min:1',
         'leido'                => 'nullable|boolean',
     ];
 

@@ -46,23 +46,17 @@
   <!--end::Notice-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "kt-notify",
-  props: {
-    classes: { type: String },
-    icon: { type: String },
-    title: { type: String },
-    body: { type: String },
-    button: { type: String },
-    buttonLabel: { type: String, default: "Button" },
-    buttonUrl: { type: String, default: "#" },
-    buttonModalId: { type: String },
-    color: { type: String, default: "primary" },
-    padding: { type: String, default: "p-6" },
-  },
-  components: {},
+<script setup>
+defineProps({
+  classes: { type: String },
+  icon: { type: String },
+  title: { type: String },
+  body: { type: String },
+  button: { type: String },
+  buttonLabel: { type: String, default: "Button" },
+  buttonUrl: { type: String, default: "#" },
+  buttonModalId: { type: String },
+  color: { type: String, default: "primary" },
+  padding: { type: String, default: "p-6" },
 });
 </script>

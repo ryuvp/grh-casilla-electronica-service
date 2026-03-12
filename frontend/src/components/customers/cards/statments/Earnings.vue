@@ -87,20 +87,10 @@
   <!--end::Earnings-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "earnings-card",
-  props: {
-    cardClasses: String,
-  },
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+defineProps({
+  cardClasses: String,
 });
 </script>

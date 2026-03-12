@@ -57,10 +57,21 @@ trait Filterable
             }
         }
 
-        // Filtros simples definidos en el modelo (por exactitud o con operadores)
-        if (!empty($this->filters)) {
-            $builder->where(function ($query) use ($request) {
-                foreach ($request->only($this->filters) as $filter => $value) {
+        // Filtros simples definidos en el modelo (por exactitud o con operadores).
+        // Soporta tanto `$this->filters` como `static::$filters` para mantener compatibilidad.
+        $modelFilters = [];
+        if (property_exists($this, 'filters') && !empty($this->filters)) {
+            $modelFilters = $this->filters;
+        } else {
+            $classVars = get_class_vars(static::class);
+            if (!empty($classVars['filters']) && is_array($classVars['filters'])) {
+                $modelFilters = $classVars['filters'];
+            }
+        }
+
+        if (!empty($modelFilters)) {
+            $builder->where(function ($query) use ($request, $modelFilters) {
+                foreach ($request->only($modelFilters) as $filter => $value) {
                     $this->resolveFilter($filter, $query, $value);
                 }
             });

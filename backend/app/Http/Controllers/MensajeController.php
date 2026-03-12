@@ -2,22 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Mensaje;
 use App\Http\Resources\MensajeResource;
+use App\Models\Casilla;
+use App\Models\Mensaje;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\Response;
 
 /**
- * MensajeController
+ * MensajeController.
  *
- * Gestiona mensajes de casillas electrónicas.
- * Nota: la autorización por permisos/roles se gestiona en frontend.
- * En backend se valida token y reglas de negocio de datos.
+ * Gestiona bandejas y operaciones de mensajes entre casillas.
+ * La autorizacion por permisos/roles se resuelve en frontend.
  */
 class MensajeController extends Controller
 {
+    /**
+     * Calcula per_page dentro de limites operativos.
+     */
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = max((int) ($request->per_page ?? 10), 1);
+
+        return min($perPage, 100);
+    }
+
+    /**
+     * Construye una respuesta paginada estandar de mensajes.
+     */
+    private function paginateMensajes(Request $request, $query)
+    {
+        return MensajeResource::collection(
+            $query
+                ->with('adjuntos')
+                ->filter($request)
+                ->orderByDesc('created_at')
+                ->paginate($this->resolvePerPage($request))
+        );
+    }
+
     /**
      * Obtiene datos de usuario autenticado inyectados por RemoteAuth.
      */
@@ -25,91 +49,218 @@ class MensajeController extends Controller
     {
         $authUser = $request->input('auth_user', []);
 
-        // Fuerza estructura segura para evitar errores de tipo.
         return is_array($authUser) ? $authUser : [];
     }
 
     /**
-     * Bandeja de entrada: mensajes recibidos.
-     * Retorna todos los mensajes donde el usuario autenticado es el destinatario.
-     * 
-     * Regla B-02: Paginación obligatoria con per_page=10 por defecto, máximo 100.
+     * Determina si el usuario autenticado puede emitir notificaciones.
+     */
+    private function canWriteNotifications(Request $request): bool
+    {
+        $authUser = $this->getAuthUser($request);
+
+        $roles = data_get($authUser, 'roles', []);
+        if (!is_array($roles)) {
+            return false;
+        }
+
+        foreach ($roles as $rol) {
+            $name = strtolower((string) (data_get($rol, 'name', data_get($rol, 'nombre', data_get($rol, 'descripcion', '')))));
+
+            if (str_contains($name, 'admin') || str_contains($name, 'notificador')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resuelve la casilla activa para una designacion.
+     */
+    private function getActiveCasillaByDesignacionId(int $designacionId): ?Casilla
+    {
+        return Casilla::where('designacion_id', $designacionId)
+            ->where('activo', true)
+            ->where(function ($query) {
+                $query->whereNull('fecha_fin')
+                    ->orWhereDate('fecha_fin', '>=', now()->toDateString());
+            })
+            ->first();
+    }
+
+    /**
+     * Resuelve la casilla activa de la designacion autenticada.
+     */
+    private function getAuthCasilla(Request $request): ?Casilla
+    {
+        $designacionId = $this->getAuthDesignacionId($request);
+        if (!$designacionId) {
+            return null;
+        }
+
+        return $this->getActiveCasillaByDesignacionId($designacionId);
+    }
+
+    /**
+     * Resuelve el ID de designacion activa desde el payload de auth.
+     */
+    private function getAuthDesignacionId(Request $request): ?int
+    {
+        $authUser = $this->getAuthUser($request);
+
+        $candidateIds = [
+            data_get($authUser, 'designacion_logeada.id'),
+            data_get($authUser, 'designacion_logeada_id'),
+            data_get($authUser, 'designacion_id'),
+        ];
+
+        foreach ($candidateIds as $candidate) {
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                return (int) $candidate;
+            }
+        }
+
+        $designaciones = data_get($authUser, 'designaciones_activas', data_get($authUser, 'designaciones', []));
+        if (is_array($designaciones) && !empty($designaciones)) {
+            $first = $designaciones[0] ?? null;
+            $firstId = is_array($first) ? ($first['id'] ?? null) : null;
+
+            if (is_numeric($firstId) && (int) $firstId > 0) {
+                return (int) $firstId;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+    * Bandeja de entrada por casilla destino.
+     *
+     * Regla B-02: paginacion obligatoria con per_page=10 por defecto, maximo 100.
      */
     public function bandejaEntrada(Request $request)
     {
-        // Obtiene el usuario autenticado inyectado por middleware remoto.
-        $authUser = $this->getAuthUser($request);
-        
-        // B-02: Paginación obligatoria
-        $perPage = (int) ($request->per_page ?? 10);
-        $perPage = min($perPage, 100);
-        
-        $mensajes = Mensaje::where('usuario_destino_id', $authUser['id'])
-            ->with('adjuntos')
-            ->filter($request)
-            ->orderByDesc('fecha_envio')
-            ->paginate($perPage);
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo resolver una casilla activa para la designacion autenticada',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
-        return MensajeResource::collection($mensajes);
+        return $this->paginateMensajes(
+            $request,
+            Mensaje::where('casilla_destino_id', $casillaAuth->id)
+                ->where('archivado', false)
+        );
     }
 
     /**
-     * Bandeja de salida: mensajes enviados.
-     * Retorna todos los mensajes donde el usuario autenticado es el remitente.
-     * 
-     * Regla B-02: Paginación obligatoria con per_page=10 por defecto, máximo 100.
+    * Bandeja de mensajes destacados recibidos.
+     */
+    public function bandejaDestacados(Request $request)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo resolver una casilla activa para la designacion autenticada',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        return $this->paginateMensajes(
+            $request,
+            Mensaje::where('casilla_destino_id', $casillaAuth->id)
+                ->where('destacado', true)
+                ->where('archivado', false)
+        );
+    }
+
+    /**
+    * Bandeja de mensajes archivados recibidos.
+     */
+    public function bandejaArchivados(Request $request)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo resolver una casilla activa para la designacion autenticada',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        return $this->paginateMensajes(
+            $request,
+            Mensaje::where('casilla_destino_id', $casillaAuth->id)
+                ->where('archivado', true)
+        );
+    }
+
+    /**
+    * Bandeja de salida por casilla origen.
+     *
+     * Regla B-02: paginacion obligatoria con per_page=10 por defecto, maximo 100.
      */
     public function bandejaEnviados(Request $request)
     {
-        // Obtiene el usuario autenticado inyectado por middleware remoto.
-        $authUser = $this->getAuthUser($request);
-        
-        // B-02: Paginación obligatoria
-        $perPage = (int) ($request->per_page ?? 10);
-        $perPage = min($perPage, 100);
-        
-        $mensajes = Mensaje::where('usuario_origen_id', $authUser['id'])
-            ->with('adjuntos')
-            ->filter($request)
-            ->orderByDesc('fecha_envio')
-            ->paginate($perPage);
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo resolver una casilla activa para la designacion autenticada',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
-        return MensajeResource::collection($mensajes);
+        return $this->paginateMensajes(
+            $request,
+            Mensaje::where('casilla_origen_id', $casillaAuth->id)
+        );
     }
 
     /**
-     * Mostrar mensaje específico (si pertenece al usuario).
-     * El usuario autenticado sólo puede ver mensajes donde es origen o destino.
+     * Muestra un mensaje si pertenece a la casilla origen o destino autenticada.
      */
     public function show(Request $request, Mensaje $mensaje)
     {
-        $authUser = $this->getAuthUser($request);
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
 
-        // Restringe acceso al mensaje solo a participantes directos.
         if (
-            $mensaje->usuario_origen_id !== $authUser['id'] &&
-            $mensaje->usuario_destino_id !== $authUser['id']
+            $mensaje->casilla_origen_id !== $casillaAuth->id &&
+            $mensaje->casilla_destino_id !== $casillaAuth->id
         ) {
-            return response()->json(['error' => 'No autorizado'], 403);
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
         return new MensajeResource($mensaje->load('adjuntos'));
     }
 
     /**
-     * Guardar un nuevo mensaje y sus archivos adjuntos.
-     * El usuario autenticado será el remitente (usuario_origen_id).
-     * 
-     * Regla B-05: Validar que el destinatario tenga una casilla activa antes de enviar.
+     * Crea mensaje y referencias externas tipadas.
      *
-     * Persistencia de referencias externas:
-     * - tipo=archivo -> referencia a File Service
-     * - tipo=documento_sgd -> referencia a SGD
-     * - tipo=normatividad -> referencia normativa
+     * Reglas de negocio:
+     * - El mensaje se enruta entre casillas activas.
+     * - Operacion atomica en transaccion.
      */
     public function store(Request $request)
     {
-        $authUser = $this->getAuthUser($request);
+        if (!$this->canWriteNotifications($request)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No autorizado para enviar notificaciones',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo resolver una casilla activa para la designacion autenticada',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
         $validator = Validator::make($request->all(), Mensaje::$validables + [
             'archivo_ids' => 'nullable|array',
@@ -121,47 +272,41 @@ class MensajeController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], Response::HTTP_BAD_REQUEST);
         }
 
         $validated = $validator->validated();
-        $validated['usuario_origen_id'] = $authUser['id'];
-        $validated['fecha_envio'] = now();
+        $validated['casilla_origen_id'] = $casillaAuth->id;
 
-        // Separa referencias externas para persistirlas en la tabla adjuntos.
         $archivoIds = $validated['archivo_ids'] ?? [];
         $sgdReferencias = $validated['sgd_referencias'] ?? [];
         $normatividadReferencias = $validated['normatividad_referencias'] ?? [];
 
         unset($validated['archivo_ids'], $validated['sgd_referencias'], $validated['normatividad_referencias']);
 
-        // B-05: valida que el destinatario tenga casilla activa antes de enviar.
-        $casillaDestino = \App\Models\Casilla::where('titular_id', $validated['usuario_destino_id'])
-            ->where('titular_tipo', 1) // 1 = Usuario
+        // Valida que la casilla destino exista y este activa.
+        $casillaDestino = Casilla::where('id', $validated['casilla_destino_id'])
             ->where('activo', true)
-            ->whereNull('fecha_fin') // Sin fecha de vencimiento o fecha futura
-            ->orWhere(function($query) {
-                $query->whereDate('fecha_fin', '>=', now()->toDateString());
+            ->where(function ($query) {
+                $query->whereNull('fecha_fin')
+                    ->orWhereDate('fecha_fin', '>=', now()->toDateString());
             })
             ->first();
 
         if (!$casillaDestino) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'El usuario destinatario no tiene una casilla electrónica activa'
+                'message' => 'La casilla destinataria no existe o no esta activa',
             ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
-            // Inicia transaccion para garantizar consistencia mensaje + adjuntos.
             DB::beginTransaction();
 
             $mensaje = Mensaje::create($validated);
-
             $rowsAdjuntos = [];
 
-            // Mapea referencias de archivos digitales.
             foreach ($archivoIds as $archivoId) {
                 $rowsAdjuntos[] = [
                     'mensaje_id' => $mensaje->id,
@@ -172,7 +317,6 @@ class MensajeController extends Controller
                 ];
             }
 
-            // Mapea referencias de documentos SGD.
             foreach ($sgdReferencias as $referencia) {
                 $rowsAdjuntos[] = [
                     'mensaje_id' => $mensaje->id,
@@ -183,7 +327,6 @@ class MensajeController extends Controller
                 ];
             }
 
-            // Mapea referencias de normatividad.
             foreach ($normatividadReferencias as $referencia) {
                 $rowsAdjuntos[] = [
                     'mensaje_id' => $mensaje->id,
@@ -194,62 +337,99 @@ class MensajeController extends Controller
                 ];
             }
 
-            // Inserta lote de referencias externas solo si hay datos.
             if (!empty($rowsAdjuntos)) {
                 DB::table('adjuntos')->insert($rowsAdjuntos);
             }
 
             DB::commit();
 
-            return new MensajeResource($mensaje->load('adjuntos'));
+            return (new MensajeResource($mensaje->load('adjuntos')))
+                ->response()
+                ->setStatusCode(Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error al guardar el mensaje: ' . $e->getMessage()
+                'message' => 'Error al guardar el mensaje: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-
     /**
-     * Marcar un mensaje como leído.
-     * Sólo el destinatario puede marcar un mensaje como leído.
+     * Marca un mensaje como leido.
+     * Solo la casilla destino puede marcar lectura.
      */
     public function marcarLeido(Request $request, Mensaje $mensaje)
     {
-        $authUser = $this->getAuthUser($request);
-        
-        if ($authUser['id'] !== $mensaje->usuario_destino_id) {
-            return response()->json(['error' => 'No autorizado'], 403);
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth || $casillaAuth->id !== $mensaje->casilla_destino_id) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        // Marca estado de lectura y fecha para trazabilidad.
         $mensaje->update([
             'leido' => true,
-            'fecha_leido' => now()
+            'read_at' => now(),
         ]);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $mensaje
-        ]);
+        return (new MensajeResource($mensaje->load('adjuntos')))->response();
     }
 
     /**
-     * Actualizar un mensaje (sólo si es el remitente).
-     * Sólo el usuario que envió el mensaje puede actualizarlo.
-        *
-        * Si el request incluye colecciones de referencias, se sincroniza por completo
-        * la tabla adjuntos del mensaje.
+     * Alterna el estado destacado del mensaje.
+     */
+    public function toggleDestacado(Request $request, Mensaje $mensaje)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth || $casillaAuth->id !== $mensaje->casilla_destino_id) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $mensaje->update([
+            'destacado' => !$mensaje->destacado,
+        ]);
+
+        return (new MensajeResource($mensaje->load('adjuntos')))->response();
+    }
+
+    /**
+     * Alterna el estado archivado del mensaje.
+     */
+    public function toggleArchivado(Request $request, Mensaje $mensaje)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth || $casillaAuth->id !== $mensaje->casilla_destino_id) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $mensaje->update([
+            'archivado' => !$mensaje->archivado,
+        ]);
+
+        return (new MensajeResource($mensaje->load('adjuntos')))->response();
+    }
+
+    /**
+     * Actualiza un mensaje (reservado).
+     *
+     * Registro tecnico: se conserva implementacion para posible reactivacion futura.
+     * Uso actual: deshabilitado por modelo unidireccional de notificaciones.
      */
     public function update(Request $request, Mensaje $mensaje)
     {
-        $authUser = $this->getAuthUser($request);
-        
-        if ($mensaje->usuario_origen_id !== $authUser['id']) {
-            return response()->json(['error' => 'No autorizado'], 403);
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Operacion reservada: la edicion de mensajes no esta habilitada',
+        ], Response::HTTP_METHOD_NOT_ALLOWED);
+
+        /*
+        if (!$this->canWriteNotifications($request)) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth || $mensaje->casilla_origen_id !== $casillaAuth->id) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
         $validator = Validator::make($request->all(), Mensaje::$validables + [
@@ -262,15 +442,15 @@ class MensajeController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
-            // Inicia transaccion para garantizar consistencia de update + adjuntos.
             DB::beginTransaction();
 
             $validated = $validator->validated();
+            $validated['casilla_origen_id'] = $casillaAuth->id;
 
             $archivoIds = $validated['archivo_ids'] ?? [];
             $sgdReferencias = $validated['sgd_referencias'] ?? [];
@@ -278,15 +458,31 @@ class MensajeController extends Controller
 
             unset($validated['archivo_ids'], $validated['sgd_referencias'], $validated['normatividad_referencias']);
 
+            // Valida casilla destino activa en caso de cambio de destinatario.
+            $casillaDestino = Casilla::where('id', $validated['casilla_destino_id'])
+                ->where('activo', true)
+                ->where(function ($query) {
+                    $query->whereNull('fecha_fin')
+                        ->orWhereDate('fecha_fin', '>=', now()->toDateString());
+                })
+                ->first();
+
+            if (!$casillaDestino) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'La casilla destinataria no existe o no esta activa',
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
             $mensaje->update($validated);
 
-            // Si llega cualquier coleccion de referencias, se sincroniza adjuntos completos.
             if (
                 $request->has('archivo_ids') ||
                 $request->has('sgd_referencias') ||
                 $request->has('normatividad_referencias')
             ) {
-                // Limpia referencias anteriores para reconstruir estado final.
                 DB::table('adjuntos')->where('mensaje_id', $mensaje->id)->delete();
 
                 $rowsAdjuntos = [];
@@ -331,25 +527,36 @@ class MensajeController extends Controller
             return new MensajeResource($mensaje->load('adjuntos'));
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error al actualizar el mensaje: ' . $e->getMessage()
+                'message' => 'Error al actualizar el mensaje: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+        */
     }
 
     /**
-     * Eliminar un mensaje.
-     * Sólo el remitente puede eliminar el mensaje.
-        *
-        * Se aplica soft delete para mantener trazabilidad histórica.
+     * Elimina un mensaje de forma logica (reservado).
+     *
+     * Registro tecnico: se conserva implementacion para posible reactivacion futura.
+     * Uso actual: deshabilitado por modelo unidireccional de notificaciones.
      */
     public function destroy(Request $request, Mensaje $mensaje)
     {
-        $authUser = $this->getAuthUser($request);
-        
-        if ($mensaje->usuario_origen_id !== $authUser['id']) {
-            return response()->json(['error' => 'No autorizado'], 403);
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Operacion reservada: la eliminacion de mensajes no esta habilitada',
+        ], Response::HTTP_METHOD_NOT_ALLOWED);
+
+        /*
+        if (!$this->canWriteNotifications($request)) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth || $mensaje->casilla_origen_id !== $casillaAuth->id) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
         try {
@@ -359,14 +566,16 @@ class MensajeController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Mensaje eliminado correctamente.'
+                'message' => 'Mensaje eliminado correctamente.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error al eliminar el mensaje: ' . $e->getMessage()
+                'message' => 'Error al eliminar el mensaje: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+        */
     }
 }

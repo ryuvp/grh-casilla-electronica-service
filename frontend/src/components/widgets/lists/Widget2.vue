@@ -56,21 +56,20 @@
   <!--end::List Widget 2-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import Dropdown2 from "@/components/dropdown/Dropdown2.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-2",
-  components: {
-    Dropdown2,
-  },
-  props: {
-    widgetClasses: String,
-  },
-  setup() {
-    const list = ref([
+});
+
+defineProps({
+  widgetClasses: String,
+});
+
+const list = ref([
       {
         avatar: getAssetPath("media/avatars/300-6.jpg"),
         name: "Emma Smith",
@@ -102,11 +101,4 @@ export default defineComponent({
         description: "PHP, SQLite, Artisan CLI",
       },
     ]);
-
-    return {
-      list,
-      getAssetPath,
-    };
-  },
-});
 </script>

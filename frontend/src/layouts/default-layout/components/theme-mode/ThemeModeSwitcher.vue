@@ -54,41 +54,28 @@
   <!--end::Menu-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent } from "vue";
+import { computed } from "vue";
 import { useThemeStore } from "@/stores/theme";
 import { useConfigStore } from "@/stores/config";
 import { useRoute } from "vue-router";
 
-export default defineComponent({
-  name: "kt-theme-switcher",
-  component: {},
-  setup() {
-    const storeTheme = useThemeStore();
-    const storeConfig = useConfigStore();
-    const route = useRoute();
+const storeTheme = useThemeStore();
+const storeConfig = useConfigStore();
+const route = useRoute();
 
-    const themeMode = computed(() => {
-      return storeTheme.mode;
-    });
-
-    const path = computed(() => route.path);
-
-    const setMode = (mode: "dark" | "light" | "system") => {
-      let configMode = mode;
-
-      storeConfig.setLayoutConfigProperty("general.mode", configMode);
-
-      storeTheme.setThemeMode(configMode);
-    };
-
-    return {
-      themeMode,
-      setMode,
-      path,
-      getAssetPath,
-    };
-  },
+const themeMode = computed(() => {
+  return storeTheme.mode;
 });
+
+const path = computed(() => route.path);
+
+const setMode = (mode) => {
+  const configMode = mode;
+
+  storeConfig.setLayoutConfigProperty("general.mode", configMode);
+
+  storeTheme.setThemeMode(configMode);
+};
 </script>

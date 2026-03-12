@@ -83,10 +83,10 @@
           <div class="modal-body px-0 py-1">
             <div class="container">
               <!-- Destinatario -->
-              <el-form-item label="Destinatario" prop="usuario_destino_id">
+              <el-form-item label="Casilla destino" prop="casilla_destino_id">
                 <el-select
-                  v-model="formData.usuario_destino_id"
-                  placeholder="Busque y seleccione el destinatario"
+                  v-model="formData.casilla_destino_id"
+                  placeholder="Busque por nombre o DNI y seleccione la casilla destino"
                   filterable
                   remote
                   :remote-method="buscarUsuarios"
@@ -96,10 +96,10 @@
                   clearable
                 >
                   <el-option
-                    v-for="usuario in usuariosStore.list"
-                    :key="usuario.id"
-                    :label="`${usuario.nombre} ${usuario.apellido} (${usuario.numero_documento})`"
-                    :value="usuario.id"
+                    v-for="option in destinatariosOptions"
+                    :key="option.casillaId"
+                    :label="option.label"
+                    :value="option.casillaId"
                   />
                 </el-select>
               </el-form-item>
@@ -170,11 +170,11 @@ import Editor from '@/components/ckeditor/Editor.vue'
 
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
 import { useFileStore } from '@/stores/files/filesStore'
-import useUsuariosStore from '@/stores/usuarios/usuariosStore'
+import useDesignacionStore from '@/stores/designaciones/designacionStore'
 
 const store = useMensajesStore()
-const usuariosStore = useUsuariosStore()
 const fileStore = useFileStore()
+const designacionStore = useDesignacionStore()
 
 const props = defineProps({ item: { type: Object, default: null } })
 
@@ -204,7 +204,7 @@ const archivosSubidos = ref([])
 const archivosCargando = ref(0)
 
 const rules = computed(() => ({
-  usuario_destino_id : [{ required: true, message: 'El destinatario es obligatorio', trigger: 'blur' }],
+  casilla_destino_id : [{ required: true, message: 'La casilla destino es obligatoria', trigger: 'blur' }],
   asunto             : [{ required: true, message: 'El asunto es obligatorio', trigger: 'blur' }],
 }))
 
@@ -218,6 +218,7 @@ const submit = async () => {
     
     await store.createMensaje(data)
     await fileStore.marcarPermanentes(data.archivo_ids)
+    await store.fetchCounts()
 
     Swal.fire({ icon: 'success', title: 'Éxito', text: 'Mensaje enviado correctamente.' })
     cerrar()
@@ -247,8 +248,6 @@ const handleFileChange = async (event) => {
       const result = await fileStore.subirArchivo(file)
 
       archivosSubidos.value.push(result.data)
-
-      console.log('Archivo subido:', archivosSubidos)
     } catch (err) {
       console.error('Error subiendo archivo:', file.name, err)
     } finally {
@@ -279,22 +278,24 @@ const getFileIconClass = (file) => {
   return classes[file.extension] || 'bg-dark'
 }
 
-const usuarios = ref([])
+const destinatariosOptions = ref([])
 const loadingUsuarios = ref(false)
 let timeout = null
+
 const buscarUsuarios = (query) => {
   clearTimeout(timeout)
-  if (!query || query.length < 4) {
-    usuarios.value = []
+  if (!query || query.length < 2) {
+    destinatariosOptions.value = []
     loadingUsuarios.value = false
     return
   }
   timeout = setTimeout(async () => {
     loadingUsuarios.value = true
     try {
-      await usuariosStore.get({ search: query })
+      destinatariosOptions.value = await designacionStore.searchDestinatarios(query)
     } catch (error) {
       console.error('Error buscando usuarios:', error)
+      destinatariosOptions.value = []
     } finally {
       loadingUsuarios.value = false
     }

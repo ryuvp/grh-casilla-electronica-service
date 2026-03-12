@@ -112,90 +112,71 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted } from "vue";
+import { onMounted } from "vue";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
 
-export default defineComponent({
-  name: "default-dashboard-widget-2",
-  components: {},
-  props: {
-    className: { type: String, required: false },
-    chartSize: { type: Number, required: true },
-  },
-  setup(props, { expose }) {
-    const initChart = () => {
-      expose();
-      var el = document.getElementById("kt_card_widget_17_chart");
+defineProps({
+  className: { type: String, required: false },
+  chartSize: { type: Number, required: true },
+});
 
-      if (!el) {
-        return;
-      }
+const initChart = () => {
+  const el = document.getElementById("kt_card_widget_17_chart");
 
-      var options = {
-        size: el.getAttribute("data-kt-size")
-          ? parseInt(el.getAttribute("data-kt-size") as string)
-          : 70,
-        lineWidth: el.getAttribute("data-kt-line")
-          ? parseInt(el.getAttribute("data-kt-line") as string)
-          : 11,
-        rotate: el.getAttribute("data-kt-rotate")
-          ? parseInt(el.getAttribute("data-kt-rotate") as string)
-          : 145,
-        //percent:  el.getAttribute('data-kt-percent') ,
-      };
+  if (!el) {
+    return;
+  }
 
-      var canvas = document.createElement("canvas");
-      var span = document.createElement("span");
+  const options = {
+    size: el.getAttribute("data-kt-size")
+      ? parseInt(el.getAttribute("data-kt-size"))
+      : 70,
+    lineWidth: el.getAttribute("data-kt-line")
+      ? parseInt(el.getAttribute("data-kt-line"))
+      : 11,
+    rotate: el.getAttribute("data-kt-rotate")
+      ? parseInt(el.getAttribute("data-kt-rotate"))
+      : 145,
+    //percent:  el.getAttribute('data-kt-percent') ,
+  };
 
-      var ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-      canvas.width = canvas.height = options.size;
+  const canvas = document.createElement("canvas");
+  const span = document.createElement("span");
 
-      el.appendChild(span);
-      el.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
+  canvas.width = canvas.height = options.size;
 
-      ctx.translate(options.size / 2, options.size / 2); // change center
-      ctx.rotate((-1 / 2 + options.rotate / 180) * Math.PI); // rotate -90 deg
+  el.appendChild(span);
+  el.appendChild(canvas);
 
-      //imd = ctx.getImageData(0, 0, 240, 240);
-      var radius = (options.size - options.lineWidth) / 2;
+  ctx.translate(options.size / 2, options.size / 2); // change center
+  ctx.rotate((-1 / 2 + options.rotate / 180) * Math.PI); // rotate -90 deg
 
-      var drawCircle = function (
-        color: string,
-        lineWidth: number,
-        percent: number
-      ) {
-        percent = Math.min(Math.max(0, percent || 1), 1);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2 * percent, false);
-        ctx.strokeStyle = color;
-        ctx.lineCap = "round"; // butt, round or square
-        ctx.lineWidth = lineWidth;
-        ctx.stroke();
-      };
+  //imd = ctx.getImageData(0, 0, 240, 240);
+  const radius = (options.size - options.lineWidth) / 2;
 
-      // Init
-      drawCircle("#E4E6EF", options.lineWidth, 100 / 100);
-      drawCircle(
-        getCSSVariableValue("--bs-primary"),
-        options.lineWidth,
-        100 / 150
-      );
-      drawCircle(
-        getCSSVariableValue("--bs-success"),
-        options.lineWidth,
-        100 / 250
-      );
-    };
+  const drawCircle = function (color, lineWidth, percent) {
+    percent = Math.min(Math.max(0, percent || 1), 1);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2 * percent, false);
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round"; // butt, round or square
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  };
 
-    onMounted(() => {
-      initChart();
-    });
+  // Init
+  drawCircle("#E4E6EF", options.lineWidth, 100 / 100);
+  drawCircle(getCSSVariableValue("--bs-primary"), options.lineWidth, 100 / 150);
+  drawCircle(getCSSVariableValue("--bs-success"), options.lineWidth, 100 / 250);
+};
 
-    return {
-      getAssetPath,
-    };
-  },
+onMounted(() => {
+  initChart();
 });
 </script>

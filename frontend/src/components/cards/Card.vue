@@ -39,18 +39,12 @@
   <!--end::Card-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "modal-card",
-  props: {
-    title: String,
-    description: String,
-    buttonText: String,
-    image: String,
-    modalId: String,
-  },
-  components: {},
+<script setup>
+defineProps({
+  title: String,
+  description: String,
+  buttonText: String,
+  image: String,
+  modalId: String,
 });
 </script>

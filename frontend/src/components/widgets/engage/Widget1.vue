@@ -51,19 +51,13 @@
   <!--end::Engage Widget 1-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script setup>
 import { getIllustrationsPath } from "@/core/helpers/assets";
-
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  props: {
-    widgetClasses: String,
-  },
-  setup() {
-    return {
-      getIllustrationsPath,
-    };
-  },
+});
+
+defineProps({
+  widgetClasses: String,
 });
 </script>

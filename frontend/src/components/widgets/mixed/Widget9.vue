@@ -67,24 +67,23 @@
   <!--end::Mixed Widget 9-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  components: {},
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
     time: String,
     image: String,
     title: String,
     description: String,
-  },
-  setup() {
-    return {
+  });
+
+return {
       getAssetPath,
     };
-  },
-});
+
 </script>

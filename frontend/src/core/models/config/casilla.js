@@ -15,8 +15,7 @@ export default {
   default : {
     id           : null,
     numero       : null,
-    titular_tipo : null,
-    titular_id   : null,
+    designacion_id : null,
     activo       : true,
     fecha_inicio : null,
     fecha_fin    : null,

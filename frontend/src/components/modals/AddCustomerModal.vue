@@ -324,128 +324,111 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import { hideModal } from "@/core/helpers/modal";
 import { countries } from "@/core/data/countries";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 
-export default defineComponent({
-  name: "add-customer-modal",
-  components: {},
-  setup() {
-    const formRef = ref<null | HTMLFormElement>(null);
-    const addCustomerModalRef = ref<null | HTMLElement>(null);
-    const loading = ref<boolean>(false);
-    const formData = ref({
-      name: "Sean Bean",
-      email: "sean@dellito.com",
-      description: "",
-      addressLine: "101, Collins Street",
-      addressLine2: "",
-      town: "Melbourne",
-      state: "Victoria",
-      postCode: "3000",
-      country: "US",
-    });
-
-    const rules = ref({
-      name: [
-        {
-          required: true,
-          message: "El nombre del cliente es obligatorio",
-          trigger: "change",
-        },
-      ],
-      email: [
-        {
-          required: true,
-          message: "El correo electrónico es obligatorio",
-          trigger: "change",
-        },
-      ],
-      addressLine: [
-        {
-          required: true,
-          message: "La dirección 1 es obligatoria",
-          trigger: "change",
-        },
-      ],
-      town: [
-        {
-          required: true,
-          message: "La ciudad es obligatoria",
-          trigger: "change",
-        },
-      ],
-      state: [
-        {
-          required: true,
-          message: "El estado es obligatorio",
-          trigger: "change",
-        },
-      ],
-      postCode: [
-        {
-          required: true,
-          message: "El código postal es obligatorio",
-          trigger: "change",
-        },
-      ],
-    });
-
-    const submit = () => {
-      if (!formRef.value) {
-        return;
-      }
-
-      formRef.value.validate((valid: boolean) => {
-        if (valid) {
-          loading.value = true;
-
-          setTimeout(() => {
-            loading.value = false;
-
-            Swal.fire({
-              text: "¡El formulario se ha enviado correctamente!",
-              icon: "success",
-              buttonsStyling: false,
-              confirmButtonText: "Ok, entendido",
-              heightAuto: false,
-              customClass: {
-                confirmButton: "btn btn-primary",
-              },
-            }).then(() => {
-              hideModal(addCustomerModalRef.value);
-            });
-          }, 2000);
-        } else {
-          Swal.fire({
-            text: "Lo sentimos, parece que hay algunos errores. Por favor, inténtalo de nuevo.",
-            icon: "error",
-            buttonsStyling: false,
-            confirmButtonText: "Ok, entendido",
-            heightAuto: false,
-            customClass: {
-              confirmButton: "btn btn-primary",
-            },
-          });
-          return false;
-        }
-      });
-    };
-
-    return {
-      formData,
-      rules,
-      submit,
-      formRef,
-      loading,
-      addCustomerModalRef,
-      getAssetPath,
-      countries,
-    };
-  },
+const formRef = ref(null);
+const addCustomerModalRef = ref(null);
+const loading = ref(false);
+const formData = ref({
+  name: "Sean Bean",
+  email: "sean@dellito.com",
+  description: "",
+  addressLine: "101, Collins Street",
+  addressLine2: "",
+  town: "Melbourne",
+  state: "Victoria",
+  postCode: "3000",
+  country: "US",
 });
+
+const rules = ref({
+  name: [
+    {
+      required: true,
+      message: "El nombre del cliente es obligatorio",
+      trigger: "change",
+    },
+  ],
+  email: [
+    {
+      required: true,
+      message: "El correo electrónico es obligatorio",
+      trigger: "change",
+    },
+  ],
+  addressLine: [
+    {
+      required: true,
+      message: "La dirección 1 es obligatoria",
+      trigger: "change",
+    },
+  ],
+  town: [
+    {
+      required: true,
+      message: "La ciudad es obligatoria",
+      trigger: "change",
+    },
+  ],
+  state: [
+    {
+      required: true,
+      message: "El estado es obligatorio",
+      trigger: "change",
+    },
+  ],
+  postCode: [
+    {
+      required: true,
+      message: "El código postal es obligatorio",
+      trigger: "change",
+    },
+  ],
+});
+
+const submit = () => {
+  if (!formRef.value) {
+    return;
+  }
+
+  formRef.value.validate((valid) => {
+    if (valid) {
+      loading.value = true;
+
+      setTimeout(() => {
+        loading.value = false;
+
+        Swal.fire({
+          text: "¡El formulario se ha enviado correctamente!",
+          icon: "success",
+          buttonsStyling: false,
+          confirmButtonText: "Ok, entendido",
+          heightAuto: false,
+          customClass: {
+            confirmButton: "btn btn-primary",
+          },
+        }).then(() => {
+          hideModal(addCustomerModalRef.value);
+        });
+      }, 2000);
+    } else {
+      Swal.fire({
+        text: "Lo sentimos, parece que hay algunos errores. Por favor, inténtalo de nuevo.",
+        icon: "error",
+        buttonsStyling: false,
+        confirmButtonText: "Ok, entendido",
+        heightAuto: false,
+        customClass: {
+          confirmButton: "btn btn-primary",
+        },
+      });
+      return false;
+    }
+  });
+};
 </script>

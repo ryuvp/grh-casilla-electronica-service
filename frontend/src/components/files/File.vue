@@ -34,18 +34,10 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "file-component",
-  props: {
-    fileTitle: String,
-
-    createdAt: String,
-
-    fileType: String,
-  },
-  components: {},
+<script setup>
+defineProps({
+  fileTitle: String,
+  createdAt: String,
+  fileType: String,
 });
 </script>

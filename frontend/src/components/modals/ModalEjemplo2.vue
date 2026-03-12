@@ -350,100 +350,69 @@
   <!--end::Modal - New Address-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import { ErrorMessage, Field, Form as VForm } from "vee-validate";
 import { hideModal } from "@/core/helpers/modal";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 import * as Yup from "yup";
 import { countries } from "@/core/data/countries";
 
-interface NewAddressData {
-  firstName: string;
-  lastName: string;
-  country: string;
-  address1: string;
-  address2: string;
-  town: string;
-  state: string;
-  postCode: string;
-}
+const submitButtonRef = ref(null);
+const newAddressModalRef = ref(null);
 
-export default defineComponent({
-  name: "modal2",
-  components: {
-    ErrorMessage,
-    Field,
-    VForm,
-  },
-  setup() {
-    const submitButtonRef = ref<null | HTMLButtonElement>(null);
-    const newAddressModalRef = ref<null | HTMLElement>(null);
-
-    const datosNuevaDireccion = ref<NewAddressData>({
-      firstName: "",
-      lastName: "",
-      country: "",
-      address1: "",
-      address2: "",
-      town: "",
-      state: "",
-      postCode: "",
-    });
-
-    const esquemaValidacion = Yup.object().shape({
-      firstName: Yup.string().required("El nombre es obligatorio").label("Nombre"),
-      lastName: Yup.string().required("El apellido es obligatorio").label("Apellido"),
-      country: Yup.string().required("El país es obligatorio").label("País"),
-      address1: Yup.string().required("La dirección línea 1 es obligatoria").label("Dirección línea 1"),
-      address2: Yup.string().required("La dirección línea 2 es obligatoria").label("Dirección línea 2"),
-      town: Yup.string().required("La ciudad es obligatoria").label("Ciudad"),
-      state: Yup.string().required("El estado/provincia es obligatorio").label("Estado/Provincia"),
-      postCode: Yup.string().required("El código postal es obligatorio").label("Código postal"),
-    });
-
-    const enviar = () => {
-      if (!submitButtonRef.value) {
-        return;
-      }
-
-      //Deshabilitar botón
-      submitButtonRef.value.disabled = true;
-      // Activar indicador
-      submitButtonRef.value.setAttribute("data-kt-indicator", "on");
-
-      setTimeout(() => {
-        if (submitButtonRef.value) {
-          submitButtonRef.value.disabled = false;
-
-          submitButtonRef.value?.removeAttribute("data-kt-indicator");
-        }
-
-        Swal.fire({
-          text: "¡El formulario se ha enviado correctamente!",
-          icon: "success",
-          buttonsStyling: false,
-          confirmButtonText: "Ok, entendido",
-          heightAuto: false,
-          customClass: {
-            confirmButton: "btn btn-primary",
-          },
-        }).then(() => {
-          hideModal(newAddressModalRef.value);
-        });
-      }, 2000);
-    };
-
-    return {
-      datosNuevaDireccion,
-      esquemaValidacion,
-      enviar,
-      submitButtonRef,
-      newAddressModalRef,
-      getAssetPath,
-      countries,
-    };
-  },
+const datosNuevaDireccion = ref({
+  firstName: "",
+  lastName: "",
+  country: "",
+  address1: "",
+  address2: "",
+  town: "",
+  state: "",
+  postCode: "",
 });
+
+const esquemaValidacion = Yup.object().shape({
+  firstName: Yup.string().required("El nombre es obligatorio").label("Nombre"),
+  lastName: Yup.string().required("El apellido es obligatorio").label("Apellido"),
+  country: Yup.string().required("El país es obligatorio").label("País"),
+  address1: Yup.string().required("La dirección línea 1 es obligatoria").label("Dirección línea 1"),
+  address2: Yup.string().required("La dirección línea 2 es obligatoria").label("Dirección línea 2"),
+  town: Yup.string().required("La ciudad es obligatoria").label("Ciudad"),
+  state: Yup.string().required("El estado/provincia es obligatorio").label("Estado/Provincia"),
+  postCode: Yup.string().required("El código postal es obligatorio").label("Código postal"),
+});
+
+const enviar = () => {
+  if (!submitButtonRef.value) {
+    return;
+  }
+
+  //Deshabilitar botón
+  submitButtonRef.value.disabled = true;
+  // Activar indicador
+  submitButtonRef.value.setAttribute("data-kt-indicator", "on");
+
+  setTimeout(() => {
+    if (submitButtonRef.value) {
+      submitButtonRef.value.disabled = false;
+
+      submitButtonRef.value?.removeAttribute("data-kt-indicator");
+    }
+
+    Swal.fire({
+      text: "¡El formulario se ha enviado correctamente!",
+      icon: "success",
+      buttonsStyling: false,
+      confirmButtonText: "Ok, entendido",
+      heightAuto: false,
+      customClass: {
+        confirmButton: "btn btn-primary",
+      },
+    }).then(() => {
+      hideModal(newAddressModalRef.value);
+    });
+  }, 2000);
+};
 </script>

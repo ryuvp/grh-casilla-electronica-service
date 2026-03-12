@@ -32,23 +32,24 @@
   <!--end::Mixed Widget 10-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent, onBeforeMount, ref, watch } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
-import type VueApexCharts from "vue3-apexcharts";
-import type { ApexOptions } from "apexcharts";
+
 import { useThemeStore } from "@/stores/theme";
 
-export default defineComponent({
+defineOptions({
   name: "widget-12",
-  props: {
+});
+
+const props = defineProps({
     widgetClasses: String,
     chartColor: String,
     chartHeight: String,
-  },
-  setup(props) {
-    const chartRef = ref<typeof VueApexCharts | null>(null);
+  });
+
+const chartRef = ref<typeof VueApexCharts | null>(null);
     const chart = ref<ApexOptions>({});
     const store = useThemeStore();
 
@@ -87,16 +88,6 @@ export default defineComponent({
     watch(themeMode, () => {
       refreshChart();
     });
-
-    return {
-      chart,
-      series,
-      chartRef,
-      refreshChart,
-      getAssetPath,
-    };
-  },
-});
 
 const chartOptions = (
   color: string = "primary",
@@ -206,4 +197,5 @@ const chartOptions = (
     },
   };
 };
+
 </script>

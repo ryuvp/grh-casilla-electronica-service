@@ -132,100 +132,76 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent, ref, onMounted } from "vue";
+import { computed, ref } from "vue";
 import useAuthStore from "@/stores/auth/authStore";
-import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 
-export default defineComponent({
-  name: "kt-user-menu",
-  setup() {
-    // Acceso al store de autenticación
-    const store = useAuthStore();
-    // Acceso al router de Vue
-    const router = useRouter();
+// Acceso al store de autenticación
+const store = useAuthStore();
 
-    // Estado local para almacenar el usuario (puede venir de localStorage)
-    const localUser = ref(null);
+// Estado local para almacenar el usuario (puede venir de localStorage)
+const localUser = ref(null);
 
-    // Computed que retorna el usuario local si existe, si no, el del store
-    const user = computed(() => localUser.value || store.currentUser);
+// Computed que retorna el usuario local si existe, si no, el del store
+const user = computed(() => localUser.value || store.currentUser);
 
-    const perfilUrl = ref(import.meta.env.VITE_AUTH_ORIGIN + "/perfil");
-    
-    // Computed para mostrar el nombre completo del usuario
-    const userFullName = computed(() => {
-      const currentUser = user.value;
-      if (!currentUser) return '';
-      return `${currentUser.nombre} ${currentUser.apellido}`;
-    });
-    const i18n = useI18n();
+const perfilUrl = ref(import.meta.env.VITE_AUTH_ORIGIN + "/perfil");
 
-    i18n.locale.value = localStorage.getItem("lang")
-      ? (localStorage.getItem("lang") as string)
-      : "en";
+// Computed para mostrar el nombre completo del usuario
+const userFullName = computed(() => {
+  const currentUser = user.value;
+  if (!currentUser) return "";
+  return `${currentUser.nombre} ${currentUser.apellido}`;
+});
+const i18n = useI18n();
 
-    const countries = {
-      es: {
-        flag: getAssetPath("media/flags/spain.svg"),
-        name: "Español",
-      },
-      en: {
-        flag: getAssetPath("media/flags/united-states.svg"),
-        name: "Inglés",
-      },
-    };
+i18n.locale.value = localStorage.getItem("lang") || "en";
 
-    // Función para cerrar sesión
-    const signOut = async () => {
-      localUser.value = null;
-      await store.logout();
-      store.$patch({ userData: null });
-      window.close();
-    };
-
-    // Al montar el componente, intenta recuperar el usuario desde localStorage
-
-    /**
-     * Genera un color HSL consistente a partir de un string (nombre/email).
-     */
-    function getColorFromString(str: string): string {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      const h = Math.abs(hash) % 360;
-      return `hsl(${h}, 70%, 50%)`;
-    }
-
-    const setLang = (lang: string) => {
-      localStorage.setItem("lang", lang);
-      i18n.locale.value = lang;
-    };
-
-    const currentLanguage = computed(() => {
-      return i18n.locale.value;
-    });
-
-    const currentLangugeLocale = computed(() => {
-      return countries[i18n.locale.value as keyof typeof countries];
-    });
-
-    // Exponer métodos y variables al template
-    return {
-      signOut,
-      setLang,
-      user,
-      userFullName,
-      getAssetPath,
-      getColorFromString,
-      currentLanguage,
-      currentLangugeLocale,
-      countries,
-      perfilUrl,
-    };
+const countries = {
+  es: {
+    flag: getAssetPath("media/flags/spain.svg"),
+    name: "Español",
   },
+  en: {
+    flag: getAssetPath("media/flags/united-states.svg"),
+    name: "Inglés",
+  },
+};
+
+// Función para cerrar sesión
+const signOut = async () => {
+  localUser.value = null;
+  await store.logout();
+  store.$patch({ userData: null });
+  window.close();
+};
+
+// Al montar el componente, intenta recuperar el usuario desde localStorage
+
+/**
+ * Genera un color HSL consistente a partir de un string (nombre/email).
+ */
+function getColorFromString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 50%)`;
+}
+
+const setLang = (lang) => {
+  localStorage.setItem("lang", lang);
+  i18n.locale.value = lang;
+};
+
+const currentLanguage = computed(() => {
+  return i18n.locale.value;
+});
+
+const currentLangugeLocale = computed(() => {
+  return countries[i18n.locale.value] || countries.en;
 });
 </script>

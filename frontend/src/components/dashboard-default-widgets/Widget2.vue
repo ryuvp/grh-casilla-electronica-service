@@ -62,20 +62,16 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "default-dashboard-widget-3",
-  components: {},
-  props: {
-    stats: { type: String, required: true },
-    description: { type: String, required: true },
-    className: { type: String, required: false },
-  },
-  setup() {
-    const profiles = [
+defineProps({
+  stats: { type: String, required: true },
+  description: { type: String, required: true },
+  className: { type: String, required: false },
+});
+
+const profiles = [
       {
         name: "Alan Warden",
         initials: "A",
@@ -104,11 +100,4 @@ export default defineComponent({
         src: getAssetPath("media/avatars/300-12.jpg"),
       },
     ];
-
-    return {
-      profiles,
-      getAssetPath,
-    };
-  },
-});
 </script>

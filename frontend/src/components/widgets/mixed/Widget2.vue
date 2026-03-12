@@ -84,27 +84,25 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent, onBeforeMount, ref, watch } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { useThemeStore } from "@/stores/theme";
-import type { ApexOptions } from "apexcharts";
+
 import Dropdown3 from "@/components/dropdown/Dropdown3.vue";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
-import type VueApexCharts from "vue3-apexcharts";
 
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  components: {
-    Dropdown3,
-  },
-  props: {
+});
+
+const props = defineProps({
     widgetClasses: String,
     widgetColor: String,
     strokeColor: String,
-  },
-  setup(props) {
-    const chartRef = ref<typeof VueApexCharts | null>(null);
+  });
+
+const chartRef = ref<typeof VueApexCharts | null>(null);
     const chart = ref<ApexOptions>({});
     const store = useThemeStore();
 
@@ -139,15 +137,6 @@ export default defineComponent({
     watch(themeMode, () => {
       refreshChart();
     });
-
-    return {
-      chart,
-      series,
-      chartRef,
-      getAssetPath,
-    };
-  },
-});
 
 const chartOptions = (
   widgetColor: string = "primary",
@@ -274,4 +263,5 @@ const chartOptions = (
     },
   };
 };
+
 </script>

@@ -201,15 +201,9 @@
   <!--end::Menu-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath, getIllustrationsPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name       : "NotificationsMenu",
-  components : {},
-  setup() {
-    const data1 = [
+const data1 = [
       {
         title       : "Project Alice",
         description : "Phase 1 development",
@@ -261,7 +255,7 @@ export default defineComponent({
       },
     ];
 
-    const data2 = [
+const data2 = [
       {
         code    : "200 OK",
         state   : "success",
@@ -336,12 +330,4 @@ export default defineComponent({
       },
     ];
 
-    return {
-      data1,
-      data2,
-      getIllustrationsPath,
-      getAssetPath,
-    };
-  },
-});
 </script>

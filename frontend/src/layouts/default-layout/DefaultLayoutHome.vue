@@ -28,14 +28,8 @@
   <!-- <KTCustomize /> -->
 </template>
 
-<script lang="ts">
-import {
-  defineComponent,
-  nextTick,
-  onBeforeMount,
-  onMounted,
-  watch,
-} from "vue";
+<script setup>
+import { nextTick, onBeforeMount, onMounted, watch } from "vue";
 import KTHeader from "@/layouts/default-layout/components/header/HeaderHome.vue";
 import KTContent from "@/layouts/default-layout/components/content/Content.vue";
 import KTToolbar from "@/layouts/default-layout/components/toolbar/Toolbar.vue";
@@ -48,39 +42,24 @@ import { useRoute } from "vue-router";
 import { reinitializeComponents } from "@/core/plugins/keenthemes";
 import LayoutService from "@/core/services/LayoutServiceHome";
 
-export default defineComponent({
-  name       : "DefaultLayout",
-  components : {
-    KTHeader,
-    KTContent,
-    KTToolbar,
-    KTFooter,
-    KTDrawers,
-    KTScrollTop,
-    KTModals,
-    KTCustomize,
-  },
-  setup() {
-    const route = useRoute();
+const route = useRoute();
 
-    onBeforeMount(() => {
-      LayoutService.init();
-    });
+onBeforeMount(() => {
+  LayoutService.init();
+});
 
-    onMounted(() => {
+onMounted(() => {
+  nextTick(() => {
+    reinitializeComponents();
+  });
+});
+
+watch(
+  () => route.path,
+  () => {
       nextTick(() => {
         reinitializeComponents();
       });
-    });
-
-    watch(
-      () => route.path,
-      () => {
-        nextTick(() => {
-          reinitializeComponents();
-        });
-      }
-    );
-  },
-});
+  }
+);
 </script>

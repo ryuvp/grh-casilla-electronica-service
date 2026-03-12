@@ -65,21 +65,19 @@
   <!--end:List Widget 3-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+<script setup>
+import { ref } from "vue";
 import Dropdown2 from "@/components/dropdown/Dropdown2.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-3",
-  components: {
-    Dropdown2,
-  },
-  props: {
-    widgetClasses: String,
-  },
-  setup() {
-    const list = ref([
+});
+
+defineProps({
+  widgetClasses: String,
+});
+
+const list = ref([
       {
         color: "success",
         title: "Create FireStone Logo",
@@ -111,11 +109,4 @@ export default defineComponent({
         text: "Due in 1 week",
       },
     ]);
-
-    return {
-      list,
-      getAssetPath,
-    };
-  },
-});
 </script>

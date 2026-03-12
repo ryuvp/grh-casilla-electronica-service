@@ -62,40 +62,37 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent } from "vue";
+import { computed } from "vue";
 
-export default defineComponent({
-  name: "table-pagination",
-  components: {},
-
-  props: {
-    maxVisibleButtons: {
-      type: Number,
-      required: false,
-      default: 5,
-    },
-    totalPages: {
-      type: Number,
-      required: true,
-    },
-    total: {
-      type: Number,
-      required: true,
-    },
-    perPage: {
-      type: Number,
-      required: true,
-    },
-    currentPage: {
-      type: Number,
-      required: true,
-    },
+const props = defineProps({
+  maxVisibleButtons: {
+    type: Number,
+    required: false,
+    default: 5,
   },
-  emits: ["page-change"],
-  setup(props, { emit }) {
-    const startPage = computed(() => {
+  totalPages: {
+    type: Number,
+    required: true,
+  },
+  total: {
+    type: Number,
+    required: true,
+  },
+  perPage: {
+    type: Number,
+    required: true,
+  },
+  currentPage: {
+    type: Number,
+    required: true,
+  },
+});
+
+const emit = defineEmits(["page-change"]);
+
+const startPage = computed(() => {
       const floorVal = Math.floor(props.maxVisibleButtons / 2);
 
       if (
@@ -115,71 +112,48 @@ export default defineComponent({
       return props.currentPage - floorVal;
     });
 
-    const endPage = computed(() => {
-      return Math.min(
-        startPage.value + props.maxVisibleButtons - 1,
-        props.totalPages
-      );
-    });
-
-    const pages = computed(() => {
-      const range: Array<{
-        name: number;
-        isDisabled: boolean;
-      }> = [];
-
-      for (let i = startPage.value; i <= endPage.value; i += 1) {
-        range.push({
-          name: i,
-          isDisabled: i === props.currentPage,
-        });
-      }
-
-      return range;
-    });
-
-    const isInFirstPage = computed(() => {
-      return props.currentPage === 1;
-    });
-    const isInLastPage = computed(() => {
-      return props.currentPage === props.totalPages;
-    });
-
-    const onClickFirstPage = () => {
-      emit("page-change", 1);
-    };
-    const onClickPreviousPage = () => {
-      emit("page-change", props.currentPage - 1);
-    };
-    const onClickPage = (page: number) => {
-      emit("page-change", page);
-    };
-    const onClickNextPage = () => {
-      emit("page-change", props.currentPage + 1);
-    };
-    const onClickLastPage = () => {
-      emit("page-change", props.totalPages);
-    };
-    const isPageActive = (page: number) => {
-      return props.currentPage === page;
-    };
-
-    return {
-      startPage,
-      endPage,
-      pages,
-      isInFirstPage,
-      isInLastPage,
-      onClickFirstPage,
-      onClickPreviousPage,
-      onClickPage,
-      onClickNextPage,
-      onClickLastPage,
-      isPageActive,
-      getAssetPath,
-    };
-  },
+const endPage = computed(() => {
+  return Math.min(startPage.value + props.maxVisibleButtons - 1, props.totalPages);
 });
+
+const pages = computed(() => {
+  const range = [];
+
+  for (let i = startPage.value; i <= endPage.value; i += 1) {
+    range.push({
+      name: i,
+      isDisabled: i === props.currentPage,
+    });
+  }
+
+  return range;
+});
+
+const isInFirstPage = computed(() => {
+  return props.currentPage === 1;
+});
+const isInLastPage = computed(() => {
+  return props.currentPage === props.totalPages;
+});
+
+const onClickFirstPage = () => {
+  emit("page-change", 1);
+};
+const onClickPreviousPage = () => {
+  emit("page-change", props.currentPage - 1);
+};
+const onClickPage = (page) => {
+  emit("page-change", page);
+};
+const onClickNextPage = () => {
+  emit("page-change", props.currentPage + 1);
+};
+const onClickLastPage = () => {
+  emit("page-change", props.totalPages);
+};
+const isPageActive = (page) => {
+  return props.currentPage === page;
+};
 </script>
 
 <style lang="scss">

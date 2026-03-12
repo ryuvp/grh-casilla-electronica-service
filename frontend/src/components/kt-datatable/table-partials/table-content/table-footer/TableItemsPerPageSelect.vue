@@ -18,46 +18,32 @@
   </div>
 </template>
 
-<script lang="ts">
-import {
-  computed,
-  defineComponent,
-  onMounted,
-  ref,
-  type WritableComputedRef,
-} from "vue";
+<script setup>
+import { computed, onMounted, ref } from "vue";
 
-export default defineComponent({
-  name: "table-items-per-page-select",
-  components: {},
-  props: {
-    itemsPerPage: { type: Number, default: 10 },
-    itemsPerPageDropdownEnabled: {
-      type: Boolean,
-      required: false,
-      default: true,
-    },
+const props = defineProps({
+  itemsPerPage: { type: Number, default: 10 },
+  itemsPerPageDropdownEnabled: {
+    type: Boolean,
+    required: false,
+    default: true,
   },
-  emits: ["update:itemsPerPage"],
-  setup(props, { emit }) {
-    const inputItemsPerPage = ref(10);
+});
 
-    onMounted(() => {
-      inputItemsPerPage.value = props.itemsPerPage;
-    });
+const emit = defineEmits(["update:itemsPerPage"]);
 
-    const itemsCountInTable: WritableComputedRef<number> = computed({
-      get(): number {
-        return props.itemsPerPage;
-      },
-      set(value: number): void {
-        emit("update:itemsPerPage", value);
-      },
-    });
+const inputItemsPerPage = ref(10);
 
-    return {
-      itemsCountInTable,
-    };
+onMounted(() => {
+  inputItemsPerPage.value = props.itemsPerPage;
+});
+
+const itemsCountInTable = computed({
+  get() {
+    return props.itemsPerPage;
+  },
+  set(value) {
+    emit("update:itemsPerPage", value);
   },
 });
 </script>

@@ -585,20 +585,19 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-5",
-  components: {},
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    return {
+  });
+
+return {
       getAssetPath,
     };
-  },
-});
+
 </script>

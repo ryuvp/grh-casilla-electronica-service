@@ -15,40 +15,47 @@ import { initializeComponents } from "@/core/plugins/keenthemes";
 import useAuthStore from "@/stores/auth/authStore";
 import JwtService from "@/core/services/JwtService";
 
-// Stores y router
+// Stores base para configuracion visual, tema, body y autenticacion.
 const configStore = useConfigStore();
 const themeStore = useThemeStore();
 const bodyStore = useBodyStore();
 const authStore = useAuthStore();
-//const usuariosStore = useUsuariosStore();
+
+// Router usado para redireccion inicial tras validar sesion.
 const router = useRouter();
+
+// Origen permitido para intercambio de mensajes con ventana padre.
 const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
 
-// Función para inicializar la app
+// Inicializa componentes visuales y remueve estado de carga inicial.
 const init = () => {
-  //authStore.validateToken();
   initializeComponents();
   bodyStore.removeBodyClassName("page-loading");
 };
 
-// Manejar mensajes desde ventana padre (autenticación)
+// Procesa handshake de autenticacion cuando el servicio abre como ventana hija.
 const handleMessage = async (event) => {
-  //console.log("Mensaje recibido:", event.origin, event.data);
+  // Solo acepta mensajes del origen autorizado.
   if (event.origin !== allowedOrigin) return;
+
+  // Solo procesa evento de apertura de servicio.
   if (!event.data || event.data.type !== 'OPEN_SERVICE') return;
   
   const { token } = event.data;
+
+  // Sin token no se permite operar y se intenta cerrar ventana.
   if (!token) {
     window.close();
     return;
   }
 
   try {
-    // Guarda token y *espera* a hidratar el store con usuario/roles
+    // Guarda token y luego hidrata store con usuario/roles desde auth service.
     JwtService.saveToken(token);
     await authStore.validateToken();
     authStore.setAuthReady(true);
 
+    // Inicializa app y redirige desde loading a bandeja.
     init();
 
     if (router.currentRoute.value.path === '/loading') {
@@ -60,10 +67,11 @@ const handleMessage = async (event) => {
     return;
   }
 
+  // El listener se desregistra tras completar handshake exitoso.
   window.removeEventListener("message", handleMessage);
 };
 
-// Cierre remoto de ventanas hijas
+// Cierra ventana hija cuando el contexto padre solicita cierre de sesion global.
 const handleCerrarHijas = (event) => {
   if (event.key === 'cerrar-hijas') {
     authStore.logout();
@@ -77,20 +85,25 @@ const handleCerrarHijas = (event) => {
   }
 };
 
+// Aplica configuracion de layout y tema antes del primer render.
 onBeforeMount(() => {
   configStore.overrideLayoutConfig();
   themeStore.setThemeMode(themeConfigValue.value);
 });
 
+// Inicializa flujo de sesion al montar la app.
 onMounted(() => {
   nextTick( async () => {
+    // Detecta si existe token local o apertura desde ventana padre.
     const tokenExiste = JwtService.haveToken();
     const tieneOrigen = !!window.opener;
 
+    // Si no hay token ni origen valido, redirige a login del auth service.
     if (!tokenExiste && !tieneOrigen) {
       window.location.href = allowedOrigin + "/login";
       return;
     }
+
     // Si recargaron con token: hidrata store antes de salir de /loading
     if (tokenExiste) {
       try {
@@ -103,17 +116,22 @@ onMounted(() => {
         router.push('/bandeja');
       }
     }
+
+    // Registra listeners de comunicacion entre ventana hija y padre.
     window.addEventListener("message", handleMessage);
     window.addEventListener("storage", handleCerrarHijas);
+
+    // Notifica al padre que la ventana hija termino de cargar.
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(
         { type: "loaded", payload: { } },
-        allowedOrigin // aqui va la ruta o dominio del padre
+        allowedOrigin
       );
     }
   });
 });
 
+// Limpia listeners globales al desmontar la aplicacion.
 onUnmounted(() => {
   window.removeEventListener("message", handleMessage);
   window.removeEventListener("storage", handleCerrarHijas);

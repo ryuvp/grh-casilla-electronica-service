@@ -52,18 +52,15 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 
-export default defineComponent({
-  name: "events-card",
-  props: {
-    cardClasses: String,
-  },
-  components: {},
-  setup() {
-    const events = ref([
+defineProps({
+  cardClasses: String,
+});
+
+const events = ref([
       {
         event:
           'Invoice <a href="#" class="fw-bold text-gray-900 text-hover-primary me-1">#LOP-45640</a> has been <span class="badge badge-light-danger">Declined</span>',
@@ -115,11 +112,4 @@ export default defineComponent({
         date: "10 Mar 2021, 9:23 pm",
       },
     ]);
-
-    return {
-      events,
-      getAssetPath,
-    };
-  },
-});
 </script>

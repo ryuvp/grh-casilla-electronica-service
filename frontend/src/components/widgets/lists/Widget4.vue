@@ -68,21 +68,20 @@
   <!--end::List Widget 4-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import Dropdown3 from "@/components/dropdown/Dropdown3.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-4",
-  components: {
-    Dropdown3,
-  },
-  props: {
-    widgetClasses: String,
-  },
-  setup() {
-    const list = ref([
+});
+
+defineProps({
+  widgetClasses: String,
+});
+
+const list = ref([
       {
         image: getAssetPath("media/svg/brand-logos/plurk.svg"),
         title: "Top Authors",
@@ -121,11 +120,4 @@ export default defineComponent({
         space: "",
       },
     ]);
-
-    return {
-      list,
-      getAssetPath,
-    };
-  },
-});
 </script>

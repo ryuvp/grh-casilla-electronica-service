@@ -90,21 +90,20 @@
   <!--end::List Widget 8-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import Dropdown3 from "@/components/dropdown/Dropdown3.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-6",
-  components: {
-    Dropdown3,
-  },
-  props: {
-    widgetClasses: String,
-  },
-  setup() {
-    const list = ref([
+});
+
+defineProps({
+  widgetClasses: String,
+});
+
+const list = ref([
       {
         image: getAssetPath("media/stock/600x400/img-17.jpg"),
         title: "Cup & Green",
@@ -130,11 +129,4 @@ export default defineComponent({
         rate: "3.7",
       },
     ]);
-
-    return {
-      list,
-      getAssetPath,
-    };
-  },
-});
 </script>

@@ -33,22 +33,11 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "files-component",
-  props: {
-    folderName: String,
-
-    files: String,
-  },
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+defineProps({
+  folderName: String,
+  files: String,
 });
 </script>

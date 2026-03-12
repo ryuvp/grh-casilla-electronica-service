@@ -17,20 +17,14 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "default-dashboard-widget-1",
-  components: {},
-  props: {
-    className: { type: String, required: false },
-    bgColor: { type: String, required: false, default: "#080655" },
-    bgImage: { type: String, required: false },
-    description: { type: String, required: true },
-    title: { type: String, required: false, default: "SGD" },
-    icon: { type: String, required: false, default: "bi bi-grid-fill" },
-  },
+<script setup>
+defineProps({
+  className: { type: String, required: false },
+  bgColor: { type: String, required: false, default: "#080655" },
+  bgImage: { type: String, required: false },
+  description: { type: String, required: true },
+  title: { type: String, required: false, default: "SGD" },
+  icon: { type: String, required: false, default: "bi bi-grid-fill" },
 });
 </script>
 

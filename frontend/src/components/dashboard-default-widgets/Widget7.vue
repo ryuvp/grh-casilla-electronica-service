@@ -185,21 +185,15 @@
   <!--end::Tables widget 16-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 import Dropdown2 from "@/components/dropdown/Dropdown2.vue";
 
-export default defineComponent({
-  name: "default-dashboard-widget-7",
-  components: {
-    Dropdown2,
-  },
-  props: {
-    className: { type: String, required: false },
-  },
-  setup() {
-    const items = [
+defineProps({
+  className: { type: String, required: false },
+});
+
+const items = [
       {
         title: "SaaS",
         icon: "car",
@@ -456,11 +450,4 @@ export default defineComponent({
         ],
       },
     ];
-
-    return {
-      items,
-      getAssetPath,
-    };
-  },
-});
 </script>

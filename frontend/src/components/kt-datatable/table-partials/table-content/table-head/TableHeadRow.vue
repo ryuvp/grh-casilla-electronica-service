@@ -36,78 +36,61 @@
   </thead>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onMounted, ref, watch } from "vue";
-import type { Sort } from "@/components/kt-datatable/table-partials/models";
+<script setup>
+import { computed, onMounted, ref, watch } from "vue";
 
-export default defineComponent({
-  name: "table-head-row",
-  props: {
-    checkboxEnabledValue: { type: Boolean, required: false, default: false },
-    checkboxEnabled: { type: Boolean, required: false, default: false },
-    sortLabel: { type: String, required: false, default: null },
-    sortOrder: {
-      type: String as () => "asc" | "desc",
-      required: false,
-      default: "asc",
-    },
-    header: { type: Array as () => Array<any>, required: true },
+const props = defineProps({
+  checkboxEnabledValue: { type: Boolean, required: false, default: false },
+  checkboxEnabled: { type: Boolean, required: false, default: false },
+  sortLabel: { type: String, required: false, default: null },
+  sortOrder: {
+    type: String,
+    required: false,
+    default: "asc",
   },
-  emits: ["on-select", "on-sort"],
-  components: {},
-  setup(props, { emit }) {
-    const checked = ref<boolean>(false);
-    const columnLabelAndOrder = ref<Sort>({
-      label: props.sortLabel,
-      order: props.sortOrder,
-    });
+  header: { type: Array, required: true },
+});
 
-    onMounted(() => {
-      emit("on-sort", columnLabelAndOrder.value);
-    });
+const emit = defineEmits(["on-select", "on-sort"]);
 
-    watch(
-      () => props.checkboxEnabledValue,
-      (currentValue) => {
-        checked.value = currentValue;
+const checked = ref(false);
+const columnLabelAndOrder = ref({
+  label: props.sortLabel,
+  order: props.sortOrder,
+});
+
+onMounted(() => {
+  emit("on-sort", columnLabelAndOrder.value);
+});
+
+watch(
+  () => props.checkboxEnabledValue,
+  (currentValue) => {
+    checked.value = currentValue;
+  }
+);
+
+const selectAll = () => {
+  emit("on-select", checked.value);
+};
+
+const onSort = (label, sortEnabled) => {
+  if (sortEnabled) {
+    if (columnLabelAndOrder.value.label === label) {
+      if (columnLabelAndOrder.value.order === "asc") {
+        columnLabelAndOrder.value.order = "desc";
+      } else if (columnLabelAndOrder.value.order === "desc") {
+        columnLabelAndOrder.value.order = "asc";
       }
-    );
+    } else {
+      columnLabelAndOrder.value.order = "asc";
+      columnLabelAndOrder.value.label = label;
+    }
+    emit("on-sort", columnLabelAndOrder.value);
+  }
+};
 
-    const selectAll = () => {
-      emit("on-select", checked.value);
-    };
-
-    const onSort = (label: string, sortEnabled: boolean) => {
-      if (sortEnabled) {
-        if (columnLabelAndOrder.value.label === label) {
-          if (columnLabelAndOrder.value.order === "asc") {
-            columnLabelAndOrder.value.order = "desc";
-          } else {
-            if (columnLabelAndOrder.value.order === "desc") {
-              columnLabelAndOrder.value.order = "asc";
-            }
-          }
-        } else {
-          columnLabelAndOrder.value.order = "asc";
-          columnLabelAndOrder.value.label = label;
-        }
-        emit("on-sort", columnLabelAndOrder.value);
-      }
-    };
-
-    const sortArrow = computed(() => {
-      return columnLabelAndOrder.value.order === "asc"
-        ? "&#x2191;"
-        : "&#x2193;";
-    });
-
-    return {
-      onSort,
-      selectAll,
-      checked,
-      sortArrow,
-      columnLabelAndOrder,
-    };
-  },
+const sortArrow = computed(() => {
+  return columnLabelAndOrder.value.order === "asc" ? "&#x2191;" : "&#x2193;";
 });
 </script>

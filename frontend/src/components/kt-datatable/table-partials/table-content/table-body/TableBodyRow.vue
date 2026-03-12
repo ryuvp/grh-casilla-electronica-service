@@ -27,48 +27,39 @@
   </tbody>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, watch } from "vue";
+<script setup>
+import { ref, watch } from "vue";
 
-export default defineComponent({
-  name: "table-body-row",
-  components: {},
-  props: {
-    header: { type: Array as () => Array<any>, required: true },
-    data: { type: Array as () => Array<any>, required: true },
-    currentlySelectedItems: { type: Array, required: false, default: () => [] },
-    checkboxEnabled: { type: Boolean, required: false, default: false },
-    checkboxLabel: {
-      type: String as () => string,
-      required: false,
-      default: "id",
-    },
-  },
-  emits: ["on-select"],
-  setup(props, { emit }) {
-    const selectedItems = ref<Array<any>>([]);
-
-    watch(
-      () => [...props.currentlySelectedItems],
-      (currentValue) => {
-        if (props.currentlySelectedItems.length !== 0) {
-          selectedItems.value = [
-            ...new Set([...selectedItems.value, ...currentValue]),
-          ];
-        } else {
-          selectedItems.value = [];
-        }
-      }
-    );
-
-    const onChange = () => {
-      emit("on-select", selectedItems.value);
-    };
-
-    return {
-      selectedItems,
-      onChange,
-    };
+const props = defineProps({
+  header: { type: Array, required: true },
+  data: { type: Array, required: true },
+  currentlySelectedItems: { type: Array, required: false, default: () => [] },
+  checkboxEnabled: { type: Boolean, required: false, default: false },
+  checkboxLabel: {
+    type: String,
+    required: false,
+    default: "id",
   },
 });
+
+const emit = defineEmits(["on-select"]);
+
+const selectedItems = ref([]);
+
+watch(
+  () => [...props.currentlySelectedItems],
+  (currentValue) => {
+    if (props.currentlySelectedItems.length !== 0) {
+      selectedItems.value = [
+        ...new Set([...selectedItems.value, ...currentValue]),
+      ];
+    } else {
+      selectedItems.value = [];
+    }
+  }
+);
+
+const onChange = () => {
+  emit("on-select", selectedItems.value);
+};
 </script>

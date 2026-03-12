@@ -143,18 +143,18 @@
   <!--end::Tables Widget 11-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-11",
-  components: {},
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    const list = [
+  });
+
+const list = [
       {
         product: {
           image: getAssetPath("media/stock/600x400/img-26.jpg"),
@@ -242,10 +242,4 @@ export default defineComponent({
       },
     ];
 
-    return {
-      list,
-      getAssetPath,
-    };
-  },
-});
 </script>

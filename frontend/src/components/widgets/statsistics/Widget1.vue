@@ -29,24 +29,17 @@
   <!--end::Statistics Widget 1-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
-
-export default defineComponent({
+defineOptions({
   name: "kt-widget-1",
-  props: {
-    widgetClasses: String,
-    background: String,
-    title: String,
-    time: String,
-    description: String,
-  },
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+});
+
+defineProps({
+  widgetClasses: String,
+  background: String,
+  title: String,
+  time: String,
+  description: String,
 });
 </script>

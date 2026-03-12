@@ -33,70 +33,56 @@
   <!--end::Statistics Widget 4-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { computed, defineComponent, onBeforeMount, ref, watch } from "vue";
+<script setup>
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { useThemeStore } from "@/stores/theme";
-import type { ApexOptions } from "apexcharts";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
-import type VueApexCharts from "vue3-apexcharts";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-4",
-  props: {
-    widgetClasses: String,
-    iconName: String,
-    color: String,
-    change: String,
-    description: String,
-    height: String,
-  },
-  components: {},
-  setup(props) {
-    const chartRef = ref<typeof VueApexCharts | null>(null);
-    const chart = ref<ApexOptions>({});
-    const store = useThemeStore();
-
-    const series = [
-      {
-        name: "Net Profit",
-        data: [40, 40, 30, 30, 35, 35, 50],
-      },
-    ];
-
-    const themeMode = computed(() => {
-      return store.mode;
-    });
-
-    onBeforeMount(() => {
-      Object.assign(chart.value, chartOptions(props.color, props.height));
-    });
-
-    const refreshChart = () => {
-      if (!chartRef.value) {
-        return;
-      }
-
-      chartRef.value.updateOptions(chartOptions(props.color, props.height));
-    };
-
-    watch(themeMode, () => {
-      refreshChart();
-    });
-
-    return {
-      chart,
-      series,
-      chartRef,
-      getAssetPath,
-    };
-  },
 });
 
-const chartOptions = (
-  color: string = "primary",
-  height: string = "auto"
-): ApexOptions => {
+const props = defineProps({
+  widgetClasses: String,
+  iconName: String,
+  color: String,
+  change: String,
+  description: String,
+  height: String,
+});
+
+const chartRef = ref(null);
+const chart = ref({});
+const store = useThemeStore();
+
+const series = [
+  {
+    name: "Net Profit",
+    data: [40, 40, 30, 30, 35, 35, 50],
+  },
+];
+
+const themeMode = computed(() => {
+  return store.mode;
+});
+
+onBeforeMount(() => {
+  Object.assign(chart.value, chartOptions(props.color, props.height));
+});
+
+const refreshChart = () => {
+  if (!chartRef.value) {
+    return;
+  }
+
+  chartRef.value.updateOptions(chartOptions(props.color, props.height));
+};
+
+watch(themeMode, () => {
+  refreshChart();
+});
+
+const chartOptions = (color = "primary", height = "auto") => {
   const labelColor = getCSSVariableValue("--bs-gray-800");
   const baseColor = getCSSVariableValue(`--bs-${color}`);
   const lightColor = getCSSVariableValue(`--bs-light-${color}`);

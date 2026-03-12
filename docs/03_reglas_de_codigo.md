@@ -2,7 +2,7 @@
 
 Estado: Vigente  
 Owner: Equipo Backend + Frontend (Tech Lead responsable)  
-Ultima actualizacion: 2026-03-09  
+Ultima actualizacion: 2026-03-12  
 Proxima revision: 2026-04-09
 
 > Reglas obligatorias para todo el codigo del Casilla Service.
@@ -94,11 +94,21 @@ return CasillaResource::collection($result);
 
 ### B-07 - Reglas de negocio de mensajes
 
-- El envio de mensajes solo se permite a usuarios con casilla activa.
+- El envio de mensajes solo se permite entre casillas activas.
+- El flujo de mensajes es unidireccional (notificaciones): el destinatario no responde.
+- Solo perfiles `admin` o `notificador` pueden crear/enviar notificaciones.
+- El destinatario solo puede leer y marcar lectura.
+- `update/delete` de mensajes quedan reservados sin uso operativo y deben responder `405`.
 - Un mensaje puede incluir:
 	- `archivo_ids` (adjuntos digitales),
 	- `sgd_referencias` (referencias a archivos/documentos del SGD).
 - Operaciones multi-escritura (`mensaje + adjuntos + referencias`) deben ejecutarse en transaccion.
+
+### B-09 - Modelo de casillas por designacion
+
+- `casillas` debe relacionarse por `designacion_id` como referencia canonica.
+- Queda prohibido modelar casillas nuevas con `titular_tipo/titular_id`.
+- `mensajes` debe persistir `casilla_origen_id` y `casilla_destino_id`.
 
 ### B-08 - Base de datos y migraciones
 
@@ -212,3 +222,18 @@ Una tarea se considera completa cuando:
 - comportamiento validado,
 - pruebas minimas ejecutadas,
 - documentacion canonica actualizada.
+
+## 10. Registro tecnico de fixes
+
+- Si una tarea resuelve un bug o comportamiento incorrecto, se debe registrar el fix en `docs/fixes`.
+- El registro aplica cuando exista: identificacion del problema, analisis de causa, propuesta tecnica y solucion implementada o claramente definida.
+- Nombre obligatorio del archivo: `FIX-XXX_nombre_corto_del_bug.md`.
+- El correlativo `XXX` se obtiene incrementando el ultimo fix existente.
+- Si el fix ya existe, no duplicar: referenciar el documento existente.
+- El contenido del fix debe incluir como minimo:
+	- `FIX-XXX - Nombre del problema`
+	- `Observacion`
+	- `Propuesta de solucion`
+	- `Solucion implementada`
+	- `Archivos modificados`
+	- `Fecha` (`YYYY-MM-DD`)

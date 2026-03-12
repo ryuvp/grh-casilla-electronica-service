@@ -78,38 +78,19 @@
   <!--end::Col-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "card-3",
-  components: {},
-  props: {
-    cardClasses: String,
-
-    avatar: String,
-
-    online: Boolean,
-
-    initials: String,
-
-    color: String,
-
-    name: String,
-
-    position: String,
-
-    avgEarnings: String,
-
-    totalSales: String,
-
-    connected: Boolean,
-  },
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+defineProps({
+  cardClasses: String,
+  avatar: String,
+  online: Boolean,
+  initials: String,
+  color: String,
+  name: String,
+  position: String,
+  avgEarnings: String,
+  totalSales: String,
+  connected: Boolean,
 });
 </script>

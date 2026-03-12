@@ -62,21 +62,18 @@
   <!--end::List Widget 1-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
+<script setup>
 import Dropdown1 from "@/components/dropdown/Dropdown1.vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-1",
-  components: {
-    Dropdown1,
-  },
-  props: {
-    widgetClasses: String,
-  },
-  setup() {
-    const items = [
+});
+
+defineProps({
+  widgetClasses: String,
+});
+
+const items = [
       {
         icon: "abstract-26",
         color: "success",
@@ -108,11 +105,4 @@ export default defineComponent({
         description: "QA Managers",
       },
     ];
-
-    return {
-      items,
-      getAssetPath,
-    };
-  },
-});
 </script>

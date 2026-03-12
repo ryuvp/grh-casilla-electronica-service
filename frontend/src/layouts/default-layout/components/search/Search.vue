@@ -445,74 +445,46 @@
   </MenuComponent>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import Results from "@/layouts/default-layout/components/search/partials/Results.vue";
 import PartialMain from "@/layouts/default-layout/components/search/partials/Main.vue";
 import Empty from "@/layouts/default-layout/components/search/partials/Empty.vue";
 import MenuComponent from "@/components/menu/MenuComponent.vue";
 
-export default defineComponent({
-  name: "kt-search",
-  components: {
-    Results,
-    PartialMain,
-    Empty,
-    MenuComponent,
-  },
-  setup() {
-    const search = ref<string>("");
-    const state = ref<
-      "main" | "empty" | "advanced-options" | "preferences" | "results"
-    >("main");
-    const loading = ref<boolean>(false);
-    const inputRef = ref<HTMLInputElement | null>(null);
+const search = ref("");
+const state = ref("main");
+const loading = ref(false);
+const inputRef = ref(null);
 
-    const searching = (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      if (target.value.length <= 1) {
-        load("main");
-      } else {
-        if (target.value.length > 5) {
-          load("empty");
-          return;
-        }
-        load("results");
-      }
-    };
+const searching = (e) => {
+  const target = e.target;
+  if (target.value.length <= 1) {
+    load("main");
+  } else {
+    if (target.value.length > 5) {
+      load("empty");
+      return;
+    }
+    load("results");
+  }
+};
 
-    const load = (
-      current: "main" | "empty" | "advanced-options" | "preferences" | "results"
-    ) => {
-      loading.value = true;
-      setTimeout(() => {
-        state.value = current;
-        loading.value = false;
-      }, 1000);
-    };
+const load = (current) => {
+  loading.value = true;
+  setTimeout(() => {
+    state.value = current;
+    loading.value = false;
+  }, 1000);
+};
 
-    const reset = () => {
-      search.value = "";
-      state.value = "main";
-    };
+const reset = () => {
+  search.value = "";
+  state.value = "main";
+};
 
-    const setState = (
-      curr: "main" | "empty" | "advanced-options" | "preferences" | "results"
-    ) => {
-      state.value = curr;
-    };
-
-    return {
-      search,
-      state,
-      loading,
-      searching,
-      reset,
-      inputRef,
-      setState,
-      getAssetPath,
-    };
-  },
-});
+const setState = (curr) => {
+  state.value = curr;
+};
 </script>

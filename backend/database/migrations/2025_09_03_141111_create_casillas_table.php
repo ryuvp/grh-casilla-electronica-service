@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('casillas', function (Blueprint $table) {
             $table->id();
             $table->string('numero')->unique();
-            $table->smallInteger('titular_tipo')->comment('1: usuario, 2: dependencia, 3: dependencia_externa ...');
-            $table->unsignedBigInteger('titular_id');
+            $table->unsignedBigInteger('designacion_id')->index();
             $table->boolean('activo')->default(true);
             $table->date('fecha_inicio')->nullable();
             $table->date('fecha_fin')->nullable();

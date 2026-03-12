@@ -40,47 +40,35 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted } from "vue";
+import { onMounted } from "vue";
 import LayoutService from "@/core/services/LayoutServiceHome";
 import { useBodyStore } from "@/stores/body";
 import { themeMode } from "@/layouts/default-layout/config/helper";
 
+const storeBody = useBodyStore();
 
-export default defineComponent({
-  name: "error-404",
-  components: {},
-  setup() {
-    const storeBody = useBodyStore();
+// Ruta de la imagen de fondo
+const bgImage =
+  themeMode.value !== "dark"
+    ? getAssetPath("media/auth/fondo.jpg")
+    : getAssetPath("media/auth/fondo.jpg");
 
-    // Ruta de la imagen de fondo
-    const bgImage =
-      themeMode.value !== "dark"
-        ? getAssetPath("media/auth/fondo.jpg")
-        : getAssetPath("media/auth/fondo.jpg");
+onMounted(() => {
+  LayoutService.emptyElementClassesAndAttributes(document.body);
 
-    onMounted(() => {
-      LayoutService.emptyElementClassesAndAttributes(document.body);
-
-      storeBody.addBodyClassname("bg-body");
-      storeBody.addBodyAttribute({
-        qualifiedName: "style",
-        value: ` 
+  storeBody.addBodyClassname("bg-body");
+  storeBody.addBodyAttribute({
+    qualifiedName: "style",
+    value: ` 
           background-image: url("${bgImage}");
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;
           min-height: 100vh;
         `,
-      });
-    });
-
-    return {
-      bgImage,
-      getAssetPath,
-    };
-  },
+  });
 });
 </script>
 <style scoped>

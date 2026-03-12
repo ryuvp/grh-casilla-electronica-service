@@ -132,18 +132,18 @@
   <!--end::Tables Widget 6-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-6",
-  components: {},
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    const items = [
+  });
+
+const items = [
       [
         {
           image: getAssetPath("media/svg/avatars/001-boy.svg"),
@@ -298,10 +298,4 @@ export default defineComponent({
       ],
     ];
 
-    return {
-      items,
-      getAssetPath,
-    };
-  },
-});
 </script>

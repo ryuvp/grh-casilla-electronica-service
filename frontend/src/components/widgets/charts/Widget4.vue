@@ -51,64 +51,54 @@
   <!--end::Charts Widget 4-->
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onBeforeMount, ref, watch } from "vue";
+<script setup>
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { useThemeStore } from "@/stores/theme";
-import type { ApexOptions } from "apexcharts";
 import { getCSSVariableValue } from "@/assets/ts/_utils";
-import type VueApexCharts from "vue3-apexcharts";
-
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  props: {
-    widgetClasses: String,
-  },
-  components: {},
-  setup() {
-    const chartRef = ref<typeof VueApexCharts | null>(null);
-    const chart = ref<ApexOptions>({});
-    const store = useThemeStore();
-
-    const series = [
-      {
-        name: "Net Profit",
-        data: [60, 50, 80, 40, 100, 60],
-      },
-      {
-        name: "Revenue",
-        data: [70, 60, 110, 40, 50, 70],
-      },
-    ];
-
-    const themeMode = computed(() => {
-      return store.mode;
-    });
-
-    onBeforeMount(() => {
-      Object.assign(chart.value, chartOptions());
-    });
-
-    const refreshChart = () => {
-      if (!chartRef.value) {
-        return;
-      }
-
-      chartRef.value.updateOptions(chartOptions());
-    };
-
-    watch(themeMode, () => {
-      refreshChart();
-    });
-
-    return {
-      chart,
-      series,
-      chartRef,
-    };
-  },
 });
 
-const chartOptions = (): ApexOptions => {
+defineProps({
+  widgetClasses: String,
+});
+
+const chartRef = ref(null);
+const chart = ref({});
+const store = useThemeStore();
+
+const series = [
+  {
+    name: "Net Profit",
+    data: [60, 50, 80, 40, 100, 60],
+  },
+  {
+    name: "Revenue",
+    data: [70, 60, 110, 40, 50, 70],
+  },
+];
+
+const themeMode = computed(() => {
+  return store.mode;
+});
+
+onBeforeMount(() => {
+  Object.assign(chart.value, chartOptions());
+});
+
+const refreshChart = () => {
+  if (!chartRef.value) {
+    return;
+  }
+
+  chartRef.value.updateOptions(chartOptions());
+};
+
+watch(themeMode, () => {
+  refreshChart();
+});
+
+const chartOptions = () => {
   const labelColor = getCSSVariableValue("--bs-gray-500");
   const borderColor = getCSSVariableValue("--bs-gray-200");
 

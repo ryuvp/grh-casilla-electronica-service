@@ -303,20 +303,11 @@
   <router-view></router-view>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 import Dropdown3 from "@/components/dropdown/Dropdown3.vue";
 
-export default defineComponent({
+defineOptions({
   name: "profile-page-layout",
-  components: {
-    Dropdown3,
-  },
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
 });
 </script>

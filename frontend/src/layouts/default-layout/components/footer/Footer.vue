@@ -26,21 +26,9 @@
   <!--end::Footer-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script setup>
 import {
   footerDisplay,
   footerWidthFluid,
 } from "@/layouts/default-layout/config/helper";
-
-export default defineComponent({
-  name: "theme-footer",
-  components: {},
-  setup() {
-    return {
-      footerWidthFluid,
-      footerDisplay,
-    };
-  },
-});
 </script>

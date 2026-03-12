@@ -34,24 +34,16 @@
   <!--end: Statistics Widget 6-->
 </template>
 
-<script lang="ts">
-import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
-
-export default defineComponent({
+<script setup>
+defineOptions({
   name: "kt-widget-6",
-  props: {
-    widgetClasses: String,
-    color: String,
-    description: String,
-    progress: String,
-    title: String,
-  },
-  components: {},
-  setup() {
-    return {
-      getAssetPath,
-    };
-  },
+});
+
+defineProps({
+  widgetClasses: String,
+  color: String,
+  description: String,
+  progress: String,
+  title: String,
 });
 </script>

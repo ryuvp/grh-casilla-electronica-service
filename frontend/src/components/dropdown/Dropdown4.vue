@@ -117,11 +117,5 @@
   <!--end::Menu 3-->
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "dropdown-5",
-  components: {},
-});
+<script setup>
 </script>

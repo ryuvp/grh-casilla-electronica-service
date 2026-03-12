@@ -12,24 +12,13 @@
   <!-- end::Scrolltop -->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted } from "vue";
+import { onMounted } from "vue";
 import { ScrollTopComponent } from "@/assets/ts/components/_ScrollTopComponent";
 import { scrolltopDispaly } from "@/layouts/default-layout/config/helper";
 
-export default defineComponent({
-  name: "KTScrollTop",
-  components: {},
-  setup() {
-    onMounted(() => {
-      ScrollTopComponent.reinitialization();
-    });
-
-    return {
-      scrolltopDispaly,
-      getAssetPath,
-    };
-  },
+onMounted(() => {
+  ScrollTopComponent.reinitialization();
 });
 </script>

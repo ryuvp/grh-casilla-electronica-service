@@ -226,88 +226,61 @@
   <!--end::Modal - Create Api Key-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 import { hideModal } from "@/core/helpers/modal";
 import { ErrorMessage, Field, Form as VForm } from "vee-validate";
 import * as Yup from "yup";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 
-interface APIData {
-  apiName: string;
-  shortDescription: string;
-  category: string;
-  apiMethod: string;
-}
+const submitButtonRef = ref(null);
+const modalRef = ref(null);
+const createAPIKeyModalRef = ref(null);
 
-export default defineComponent({
-  name: "create-api-key-modal",
-  components: {
-    ErrorMessage,
-    Field,
-    VForm,
-  },
-  setup() {
-    const submitButtonRef = ref<null | HTMLButtonElement>(null);
-    const modalRef = ref<null | HTMLElement>(null);
-    const createAPIKeyModalRef = ref<null | HTMLElement>(null);
-
-    const apiData = ref<APIData>({
-      apiName: "",
-      shortDescription: "",
-      category: "",
-      apiMethod: "",
-    });
-
-    const validationSchema = Yup.object().shape({
-      apiName: Yup.string().required("El nombre de la API es obligatorio").label("Nombre de la API"),
-      shortDescription: Yup.string().required("La descripción es obligatoria").label("Descripción"),
-      category: Yup.string().required("La categoría es obligatoria").label("Categoría"),
-      apiMethod: Yup.string().required("El método de la API es obligatorio").label("Método de la API"),
-    });
-
-    const submit = () => {
-      if (!submitButtonRef.value) {
-        return;
-      }
-
-      //Deshabilitar botón
-      submitButtonRef.value.disabled = true;
-      // Activar indicador
-      submitButtonRef.value.setAttribute("data-kt-indicator", "on");
-
-      setTimeout(() => {
-        if (submitButtonRef.value) {
-          submitButtonRef.value.disabled = false;
-
-          submitButtonRef.value?.removeAttribute("data-kt-indicator");
-        }
-
-        Swal.fire({
-          text: "¡El formulario se ha enviado correctamente!",
-          icon: "success",
-          buttonsStyling: false,
-          confirmButtonText: "Ok, entendido",
-          heightAuto: false,
-          customClass: {
-            confirmButton: "btn btn-primary",
-          },
-        }).then(() => {
-          hideModal(createAPIKeyModalRef.value);
-        });
-      }, 2000);
-    };
-
-    return {
-      apiData,
-      validationSchema,
-      submit,
-      submitButtonRef,
-      modalRef,
-      createAPIKeyModalRef,
-      getAssetPath,
-    };
-  },
+const apiData = ref({
+  apiName: "",
+  shortDescription: "",
+  category: "",
+  apiMethod: "",
 });
+
+const validationSchema = Yup.object().shape({
+  apiName: Yup.string().required("El nombre de la API es obligatorio").label("Nombre de la API"),
+  shortDescription: Yup.string().required("La descripción es obligatoria").label("Descripción"),
+  category: Yup.string().required("La categoría es obligatoria").label("Categoría"),
+  apiMethod: Yup.string().required("El método de la API es obligatorio").label("Método de la API"),
+});
+
+const submit = () => {
+  if (!submitButtonRef.value) {
+    return;
+  }
+
+  //Deshabilitar botón
+  submitButtonRef.value.disabled = true;
+  // Activar indicador
+  submitButtonRef.value.setAttribute("data-kt-indicator", "on");
+
+  setTimeout(() => {
+    if (submitButtonRef.value) {
+      submitButtonRef.value.disabled = false;
+
+      submitButtonRef.value?.removeAttribute("data-kt-indicator");
+    }
+
+    Swal.fire({
+      text: "¡El formulario se ha enviado correctamente!",
+      icon: "success",
+      buttonsStyling: false,
+      confirmButtonText: "Ok, entendido",
+      heightAuto: false,
+      customClass: {
+        confirmButton: "btn btn-primary",
+      },
+    }).then(() => {
+      hideModal(createAPIKeyModalRef.value);
+    });
+  }, 2000);
+};
 </script>

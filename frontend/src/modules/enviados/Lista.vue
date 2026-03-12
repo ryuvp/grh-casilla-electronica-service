@@ -1,64 +1,52 @@
 <template>
-  <!-- <ul class="list-group list-group-flush">
-    <li
-      v-for="msg in props.mensajes"
-      :key="msg.id"
-      class="list-group-item d-flex justify-content-between align-items-start py-3"
-      :class="{ active: props.selected?.id === msg.id }"
-      style="cursor: pointer;"
-      @click="$emit('seleccionar', msg)"
-    >
-      <div class="me-auto">
-        <div class="fw-bold text-dark d-flex align-items-center gap-2">
-          <i class="bi-send-fill text-success"></i>
-          Para: <span class="text-muted">Usuario {{ msg.usuario_destino_id }}</span>
-        </div>
-        <div>{{ msg.asunto }}</div>
-      </div>
-      <div class="text-muted small">
-        {{ formatDate(msg.fecha_envio) }}
-      </div>
-    </li>
-  </ul> -->
-
-  <Tabla
+  <TablaBackend
     ref="tablaRef"
-    :items="props.mensajes"
-    :columns="encabezadoTabla"
-    :pagination="props.pagination"
-    :multi-select="true"
-    :selected-items="props.seleccionados"
-    @items-per-page-change="handleSizeChange"
+    :items="mensajesOrdenados"
+    :columns="columns"
+    :pagination="pagination"
+    :multi-select="false"
+    :selected-items="selectedItems"
+    :sort-label="sortLabel"
+    :sort-order="sortOrder"
     @row-select="handleSeleccion"
     @sort="handleSort"
     @page-change="handlePageChange"
+    @items-per-page-change="handleSizeChange"
   >
     <template #row="{ item }">
-      <div class="me-auto">
+      <td class="cell-ellipsis">
         <div class="fw-bold text-dark d-flex align-items-center gap-2">
           <i class="bi-send-fill text-success"></i>
-          Para: <span class="text-muted">Usuario {{ item.usuario_destino_id }}</span>
+          Para:
+          <span
+            class="text-muted para-destinatario"
+            :title="getParaTexto(item)"
+          >
+            {{ getParaTexto(item) }}
+          </span>
         </div>
         <div>{{ item.asunto }}</div>
-      </div>
-      <div class="text-muted small">
-        {{ formatDate(item.fecha_envio) }}
-      </div>
+      </td>
+      <td class="text-muted small">
+        {{ formatDate(item.created_at) }}
+      </td>
     </template>
-  </Tabla>
+  </TablaBackend>
 </template>
 
 <script setup>
-
-import { ref } from 'vue'
-import Tabla from '@/components/tablas/TablaBackend.vue'
-
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { computed, ref, watch } from 'vue'
+import TablaBackend from '@/components/tabla/TablaBackend.vue'
+import useDesignacionStore from '@/stores/designaciones/designacionStore'
+import { formatDateTimeLima, toTimestamp } from '@/core/utils/dateTime'
 
 const props = defineProps({
   mensajes : {
     type     : Array,
+    required : true
+  },
+  pagination : {
+    type     : Object,
     required : true
   },
   selected : {
@@ -67,24 +55,149 @@ const props = defineProps({
   }
 })
 
-const encabezadoTabla = ref([
-  { columnName: "MENSAJES ENVIADOS", columnLabel: "enviados", sortEnabled: true, width: "100%" },
-]);
+const emit = defineEmits(['seleccionar', 'page-change', 'items-per-page-change'])
+const designacionStore = useDesignacionStore()
 
-defineEmits(['seleccionar'])
+// Estado de orden administrado por TablaBackend.
+const sortLabel = ref('created_at')
+const sortOrder = ref('desc')
+const paraTextoByMensajeId = ref({})
+let cargaActual = 0
 
-function formatDate(fechaStr) {
-  if (!fechaStr) return ''
-  const fecha = new Date(fechaStr)
-  return format(fecha, 'dd/MM/yyyy HH:mm', { locale: es })
+// Configuracion de columnas para bandeja de enviados.
+const columns = ref([
+  { columnName: 'Mensaje Enviado', columnLabel: 'asunto', sortEnabled: true, width: '75%' },
+  { columnName: 'Fecha', columnLabel: 'created_at', sortEnabled: true, width: '25%' },
+])
+
+// TablaBackend espera arreglo para seleccion; se adapta desde seleccionado simple.
+const selectedItems = computed(() => (props.selected ? [props.selected] : []))
+
+const pagination = computed(() => props.pagination)
+
+// Aplica orden local en base al estado emitido por TablaBackend.
+const mensajesOrdenados = computed(() => {
+  const data = [...props.mensajes]
+  const label = sortLabel.value
+  const order = sortOrder.value
+
+  const normalize = (value) => {
+    if (label === 'created_at') {
+      return toTimestamp(value)
+    }
+    return String(value ?? '').toLowerCase()
+  }
+
+  data.sort((a, b) => {
+    const av = normalize(a?.[label])
+    const bv = normalize(b?.[label])
+
+    if (av < bv) return order === 'asc' ? -1 : 1
+    if (av > bv) return order === 'asc' ? 1 : -1
+    return 0
+  })
+
+  return data
+})
+
+// Emite al padre el item seleccionado por TablaBackend.
+function handleSeleccion({ item }) {
+  if (!item) return
+  emit('seleccionar', item)
 }
 
+// Sincroniza estado de orden cuando el usuario hace click en el encabezado.
+function handleSort({ label, order }) {
+  sortLabel.value = label
+  sortOrder.value = order
+}
+
+function handlePageChange(page) {
+  emit('page-change', page)
+}
+
+function handleSizeChange(perPage) {
+  emit('items-per-page-change', perPage)
+}
+
+// Formatea fecha para visualizacion consistente de enviados.
+function formatDate(fechaStr) {
+  return formatDateTimeLima(fechaStr)
+}
+
+function getParaTexto(item) {
+  return paraTextoByMensajeId.value[item.id] || `Casilla ${item.casilla_destino_id}`
+}
+
+async function cargarDestinatarios(mensajes = []) {
+  const mensajesValidos = mensajes.filter(m => m?.id && m?.casilla_destino_id)
+  if (!mensajesValidos.length) {
+    paraTextoByMensajeId.value = {}
+    return
+  }
+
+  const cargaId = ++cargaActual
+  const actores = await Promise.all(
+    mensajesValidos.map((mensaje) => designacionStore.resolveActorByCasillaId(mensaje.casilla_destino_id))
+  )
+
+  if (cargaId !== cargaActual) return
+
+  const nuevosTextos = {}
+  mensajesValidos.forEach((mensaje, index) => {
+    const actor = actores[index]
+    nuevosTextos[mensaje.id] = actor?.usuario_nombre || `Casilla ${mensaje.casilla_destino_id}`
+  })
+
+  paraTextoByMensajeId.value = nuevosTextos
+}
+
+watch(
+  () => props.mensajes.map(m => `${m.id}:${m.casilla_destino_id}`).join('|'),
+  () => {
+    cargarDestinatarios(props.mensajes)
+  },
+  { immediate: true }
+)
 
 </script>
 
 <style scoped>
-.list-group-item.active {
-  background-color: #f0f7ff;
-  border-left: 4px solid #0d6efd;
+/* Permite que TablaBackend se estire y use todo el alto disponible del panel. */
+:deep(.table-container) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.custom-scrollbar) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:deep(.table-responsive) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:deep(table) {
+  margin-bottom: 0;
+}
+
+:deep(.pagination) {
+  margin-bottom: 0;
+}
+
+:deep(.table-container > .d-flex.justify-content-between) {
+  padding-top: 0.5rem;
+}
+
+.para-destinatario {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 </style>

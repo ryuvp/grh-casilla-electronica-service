@@ -54,6 +54,9 @@
                   <span class="menu-title">{{
                     translate(menuItem.heading)
                   }}</span>
+                  <span v-if="hasBadge(menuItem.route)" class="menu-badge badge badge-sm badge-light-primary ms-auto">
+                    {{ getBadgeCount(menuItem.route) }}
+                  </span>
                 </router-link>
               </div>
             </template>
@@ -103,6 +106,9 @@
                       <span class="menu-title">{{
                         translate(item2.heading)
                       }}</span>
+                      <span v-if="hasBadge(item2.route)" class="menu-badge badge badge-sm badge-light-primary ms-auto">
+                        {{ getBadgeCount(item2.route) }}
+                      </span>
                     </router-link>
                   </div>
                   <div
@@ -160,50 +166,56 @@
   <!--end::sidebar menu-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { sidebarMenuIcons } from "@/layouts/default-layout/config/helper";
 import { useI18n } from "vue-i18n";
 import useAuthStore from "@/stores/auth/authStore";
+import { useMensajesStore } from "@/stores/mensajes/mensajesStore";
 
-export default defineComponent({
-  name: "sidebar-menu",
-  components: {},
-  setup() {
-    const { t, te } = useI18n();
-    const route = useRoute();
-    const scrollElRef = ref<null | HTMLElement>(null);
-    const authStore = useAuthStore();
+const { t, te } = useI18n();
+const route = useRoute();
+const scrollElRef = ref(null);
+const authStore = useAuthStore();
+const mensajesStore = useMensajesStore();
 
-    onMounted(() => {
-      // Load the main menu configuration based on the user's role
-      //MainMenuConfig.value = authStore.getMainMenuConfig;
-      if (scrollElRef.value) {
-        scrollElRef.value.scrollTop = 0;
-      }
-    });
+onMounted(() => {
+  if (scrollElRef.value) {
+    scrollElRef.value.scrollTop = 0;
+  }
 
-    const translate = (text: string) => {
-      if (te(text)) {
-        return t(text);
-      } else {
-        return text;
-      }
-    };
-
-    const hasActiveChildren = (match: string) => {
-      return route.path.indexOf(match) !== -1;
-    };
-
-    return {
-      hasActiveChildren,
-      authStore,
-      sidebarMenuIcons,
-      translate,
-      getAssetPath,
-    };
-  },
+  mensajesStore.fetchCounts();
 });
+
+const translate = (text) => {
+  if (te(text)) {
+    return t(text);
+  } else {
+    return text;
+  }
+};
+
+const hasActiveChildren = (match) => {
+  return route.path.indexOf(match) !== -1;
+};
+
+const routeToCountKey = (path) => {
+  const mapping = {
+    '/bandeja'    : 'entrada',
+    '/enviados'   : 'enviados',
+    '/destacados' : 'destacados',
+    '/archivados' : 'archivados',
+  };
+
+  return path ? mapping[path] : undefined;
+};
+
+const getBadgeCount = (path) => {
+  const key = routeToCountKey(path);
+  return key ? mensajesStore.counts[key] ?? 0 : 0;
+};
+
+const hasBadge = (path) => routeToCountKey(path) !== undefined;
 </script>

@@ -170,18 +170,19 @@
   <!--end::Tables Widget 9-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, ref } from "vue";
+import { ref } from "vue";
 
-export default defineComponent({
+defineOptions({
   name: "kt-widget-9",
-  components: {},
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
-  },
-  setup() {
-    const checkedRows = ref<Array<number>>([]);
+  });
+
+const checkedRows = ref<Array<number>>([]);
 
     const list = [
       {
@@ -231,11 +232,4 @@ export default defineComponent({
       },
     ];
 
-    return {
-      list,
-      checkedRows,
-      getAssetPath,
-    };
-  },
-});
 </script>

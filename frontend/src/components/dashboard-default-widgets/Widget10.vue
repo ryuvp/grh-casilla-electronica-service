@@ -121,18 +121,14 @@
   </div>
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "default-dashboard-widget-10",
-  components: {},
-  props: {
-    className: { type: String, required: false },
-  },
-  setup() {
-    const table = [
+defineProps({
+  className: { type: String, required: false },
+});
+
+const table = [
       {
         img: getAssetPath("media/stock/600x600/img-49.jpg"),
         title: "Mivy App",
@@ -199,11 +195,4 @@ export default defineComponent({
         },
       },
     ];
-
-    return {
-      table,
-      getAssetPath,
-    };
-  },
-});
 </script>

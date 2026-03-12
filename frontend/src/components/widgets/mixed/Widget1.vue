@@ -105,23 +105,22 @@
   <!--end::List Widget 1-->
 </template>
 
-<script lang="ts">
+<script setup>
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent } from "vue";
+
 import Dropdown3 from "@/components/dropdown/Dropdown3.vue";
 
-export default defineComponent({
+defineOptions({
   name: "widget-1",
-  components: {
-    Dropdown3,
-  },
-  props: {
+});
+
+defineProps({
     widgetClasses: String,
     widgetColor: String,
     chartHeight: Number,
-  },
-  setup() {
-    const items = [
+  });
+
+const items = [
       {
         icon: "compass",
         title: "Sales",
@@ -152,10 +151,4 @@ export default defineComponent({
       },
     ];
 
-    return {
-      items,
-      getAssetPath,
-    };
-  },
-});
 </script>

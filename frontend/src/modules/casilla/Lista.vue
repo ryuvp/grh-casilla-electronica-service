@@ -13,10 +13,9 @@
   >
     <template #row="{ item }">
       <td class="cell-ellipsis">{{ item.numero }}</td>
-      <td class="cell-ellipsis">{{ item.tipo_nombre }}</td>
-      <td class="cell-ellipsis">{{ item.titular_id }}</td>
-      <td class="cell-ellipsis">{{ item.fecha_inicio }}</td>
-      <td class="cell-ellipsis">{{ item.fecha_fin }}</td>
+      <td class="cell-ellipsis">{{ item.designacion_id }}</td>
+      <td class="cell-ellipsis">{{ formatFecha(item.fecha_inicio) }}</td>
+      <td class="cell-ellipsis">{{ formatFecha(item.fecha_fin) }}</td>
       <td class="cell-ellipsis">{{ item.activo }}</td>
     </template>
   </TablaBackend>
@@ -26,13 +25,13 @@
 import { ref } from 'vue'
 import TablaBackend from '@/components/tabla/TablaBackend.vue'
 import useCasillaStore from '@/stores/casillas/casillasPaginadoStore.js'
+import { formatDateLima } from '@/core/utils/dateTime'
 
 const store = useCasillaStore();
 
 const columns = ref([
   { columnName: 'Número de Casilla', columnLabel: 'Número', sortEnabled: false, width: '15%' },
-  { columnName: 'Tipo de Titular', columnLabel: 'Tipo', sortEnabled: false, width: '20%' },
-  { columnName: 'Titular', columnLabel: 'Titular', sortEnabled: false, width: '15%' },
+  { columnName: 'Designación', columnLabel: 'Designación', sortEnabled: false, width: '20%' },
   { columnName: 'Fecha de Inicio', columnLabel: 'Fecha de Inicio', sortEnabled: false, width: '15%' },
   { columnName: 'Fecha de Fin', columnLabel: 'Fecha de Fin', sortEnabled: false, width: '15%' },
   { columnName: 'Activo', columnLabel: 'Activo', sortEnabled: false, width: '10%' },
@@ -56,5 +55,9 @@ function handleSizeChange(size) {
 function handleSort({ label, order }) {
   store.limpiarSeleccion()
   store.get({ sort: label, order })
+}
+
+function formatFecha(fecha) {
+  return formatDateLima(fecha)
 }
 </script>

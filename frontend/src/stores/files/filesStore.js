@@ -39,7 +39,7 @@ export const useFileStore = defineStore('fileStore', {
       if (!idsTemporales.length) return
 
       try {
-        await ApiFileService.put('/marcar-permanente', { ids: idsTemporales })
+        await ApiFileService.post('/marcar-permanente', { ids: idsTemporales })
         this.archivos = this.archivos.map(a => ({
           ...a,
           temporal : false
@@ -61,7 +61,7 @@ export const useFileStore = defineStore('fileStore', {
 
     async descargarArchivo(id) {
       try {
-        const response = await ApiFileService.download(`/${id}/download`)
+        const response = await ApiFileService.download(`/download/${id}`)
         // Esto abre el archivo en el navegador o lo fuerza a descargar
         const blob = new Blob([response.data])
         const link = document.createElement('a')

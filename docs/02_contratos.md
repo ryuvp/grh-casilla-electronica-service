@@ -93,6 +93,20 @@ Lista mensajes recibidos del usuario autenticado.
 ### GET `/mensajes/enviados`
 Lista mensajes enviados por el usuario autenticado.
 
+### GET `/mensajes/destacados`
+Lista mensajes destacados recibidos por el usuario autenticado.
+
+Regla de negocio:
+- Solo devuelve mensajes de la casilla destino autenticada.
+- Solo incluye mensajes con `destacado=true` y `archivado=false`.
+
+### GET `/mensajes/archivados`
+Lista mensajes archivados recibidos por el usuario autenticado.
+
+Regla de negocio:
+- Solo devuelve mensajes de la casilla destino autenticada.
+- Solo incluye mensajes con `archivado=true`.
+
 ### POST `/mensajes`
 Crea mensaje y opcionalmente adjuntos.
 
@@ -153,6 +167,18 @@ Nota de autorizacion:
 
 ### POST `/mensajes/{mensaje}/leido`
 Marca mensaje como leido.
+
+### POST `/mensajes/{mensaje}/destacar`
+Alterna el estado destacado de un mensaje recibido.
+
+Regla de negocio:
+- Solo la casilla destino del mensaje puede ejecutar esta accion.
+
+### POST `/mensajes/{mensaje}/archivar`
+Alterna el estado archivado de un mensaje recibido.
+
+Regla de negocio:
+- Solo la casilla destino del mensaje puede ejecutar esta accion.
 
 ### DELETE `/mensajes/{mensaje}`
 Operacion reservada (sin uso operativo actual).

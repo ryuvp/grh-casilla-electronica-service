@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\Client\RequestException;
@@ -33,6 +34,11 @@ class RemoteAuth
             $request->merge(['auth_user' => $response->json()]);
 
             return $next($request);
+        } catch (ConnectionException $e) {
+            return response()->json([
+                'error' => 'No se pudo conectar al servicio de autenticación',
+                'details' => $e->getMessage()
+            ], 503);
         } catch (RequestException $e) {
             return response()->json([
                 'error' => 'No se pudo conectar al servicio de autenticación',

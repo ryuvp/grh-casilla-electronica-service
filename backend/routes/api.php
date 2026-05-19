@@ -16,6 +16,22 @@ use App\Http\Controllers\MensajeController;
 |
 */
 
+Route::get('/health', function () {
+    $payload = [
+        'status' => 'ok',
+        'service' => 'casilla-electronica-service',
+        'timestamp' => now()->toIso8601String(),
+    ];
+
+    if (!app()->environment('production')) {
+        $payload['php_version'] = PHP_VERSION;
+        $payload['laravel_version'] = app()->version();
+        $payload['app_env'] = app()->environment();
+    }
+
+    return response()->json($payload);
+});
+
 Route::middleware('remoteauth')->group(function () {
     Route::apiResource('/casillas', CasillaController::class);
     Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);

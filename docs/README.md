@@ -14,6 +14,8 @@ Este indice define la fuente unica de verdad documental para el servicio.
 8. `08_glosario.md` - terminos de dominio y tecnicos.
 9. `09_bitacora_inicial_y_alcance.md` - alcance inicial, riesgos y decisiones.
 
+10. `10_integracion_consumidor_popup.md` — guía completa para integrar el popup de comunicados en servicios consumidores del ecosistema.
+
 ## Prioridad de referencia
 
 Si dos documentos se contradicen, usar este orden:

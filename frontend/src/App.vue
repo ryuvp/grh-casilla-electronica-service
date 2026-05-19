@@ -1,9 +1,10 @@
 <template>
   <RouterView />
+  <ComunicadosOverlay ref="comunicadosOverlayRef" />
 </template>
 
 <script setup>
-import { nextTick, onBeforeMount, onMounted, onUnmounted } from "vue";
+import { nextTick, onBeforeMount, onMounted, onUnmounted, ref } from "vue";
 import { RouterView, useRouter } from "vue-router";
 
 import { useConfigStore } from "@/stores/config";
@@ -14,12 +15,14 @@ import { initializeComponents } from "@/core/plugins/keenthemes";
 
 import useAuthStore from "@/stores/auth/authStore";
 import JwtService from "@/core/services/JwtService";
+import ComunicadosOverlay from "@/components/comunicados/ComunicadosOverlay.vue";
 
 // Stores base para configuracion visual, tema, body y autenticacion.
 const configStore = useConfigStore();
 const themeStore = useThemeStore();
 const bodyStore = useBodyStore();
 const authStore = useAuthStore();
+const comunicadosOverlayRef = ref(null);
 
 // Router usado para redireccion inicial tras validar sesion.
 const router = useRouter();
@@ -57,6 +60,8 @@ const handleMessage = async (event) => {
 
     // Inicializa app y redirige desde loading a bandeja.
     init();
+    await nextTick();
+    await comunicadosOverlayRef.value?.cargar();
 
     if (router.currentRoute.value.path === '/loading') {
       router.replace('/bandeja');
@@ -112,6 +117,8 @@ onMounted(() => {
         authStore.setAuthReady(true);
       }
       init();
+      await nextTick();
+      await comunicadosOverlayRef.value?.cargar();
       if (router.currentRoute.value.path === '/loading') {
         router.push('/bandeja');
       }

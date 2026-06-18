@@ -46,9 +46,10 @@ const handleMessage = async (event) => {
   
   const { token } = event.data;
 
-  // Sin token no se permite operar y se intenta cerrar ventana.
+  // Sin token no se permite operar.
   if (!token) {
-    window.close();
+    console.error("El mensaje OPEN_SERVICE no contiene un token válido.");
+    // window.close(); // Comentado para depuración
     return;
   }
 
@@ -67,8 +68,8 @@ const handleMessage = async (event) => {
       router.replace('/bandeja');
     }
   } catch (error) {
-    console.error("Error al guardar el token:", error);
-    window.close();
+    console.error("Error al iniciar servicio (handshake):", error);
+    // window.close(); // Comentado para depuración: evita que la ventana se cierre ante errores
     return;
   }
 

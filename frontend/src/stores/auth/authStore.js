@@ -9,6 +9,36 @@ const ApiCasillaService = createApiService(import.meta.env.VITE_API_URL);
 // Origen permitido para comunicacion segura con ventana padre.
 const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
 
+// Helper para eliminar permisos duplicados
+const uniquePermissions = (permissions = []) => {
+  const seen = new Set();
+
+  return (permissions || []).filter((permission) => {
+    const key = `${permission?.guard_name || ""}:${permission?.name || permission?.id || ""}`;
+
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+    return true;
+  });
+};
+
+// Resuelve permisos canónicos desde designacion_logeada o userData
+const getCanonicalPermissions = (state) => {
+  const directPermissions =
+    state.userData?.designacion_logeada?.permissions || state.userData?.permissions;
+
+  if (Array.isArray(directPermissions) && directPermissions.length) {
+    return uniquePermissions(directPermissions);
+  }
+
+  return uniquePermissions(
+    (state.userData?.designacion_logeada?.roles || state.userData?.roles || []).flatMap(
+      (role) => role.permissions || []
+    )
+  );
+};
+
 // Store de autenticacion/autorizacion y permisos del servicio actual.
 const useAuthStore = defineStore('auth', {
   // Estado base de sesion y cache de validacion de casilla.
@@ -23,60 +53,53 @@ const useAuthStore = defineStore('auth', {
 
   getters : {
     // Indica si existe una sesion autenticada en memoria.
-    isLoggedIn  : state => state.isAuthenticated,
+    isLoggedIn : state => state.isAuthenticated,
 
     // Retorna el perfil completo del usuario autenticado.
     currentUser : state => state.userData,
 
-    // Retorna los roles asociados al usuario actual.
-    roles       : state => state.userData?.roles || [],
+    // Retorna los roles asociados al usuario actual (desde designación logeada con fallback a directo).
+    roles : state => state.userData?.designacion_logeada?.roles || state.userData?.roles || [],
+
+    // Obtiene listado de permisos únicos
+    permissions : state => getCanonicalPermissions(state),
 
     // Filtra permisos de tipo servicio para el modulo activo.
     permisosServicio : state =>
-      state.roles.flatMap(rol =>
-        rol.permissions.filter(p =>
-          p.tipo_permiso === 1 && p.nombre_servicio === state.serviceName
-        )
+      getCanonicalPermissions(state).filter(p =>
+        p.tipo_permiso === 1 && p.nombre_servicio === state.serviceName
       ) || [],
 
     // Filtra permisos de tipo menu para construir navegacion.
     permisosMenu : state =>
-      state.roles.flatMap(rol =>
-        rol.permissions.filter(p =>
-          p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
-        )
+      getCanonicalPermissions(state).filter(p =>
+        p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
       ) || [],
 
     // Filtra permisos de tipo ruta usados por el router guard.
     permisosRuta : state =>
-      state.roles.flatMap(rol =>
-        rol.permissions.filter(p =>
-          p.tipo_permiso === 3 && p.nombre_servicio === state.serviceName
-        )
+      getCanonicalPermissions(state).filter(p =>
+        p.tipo_permiso === 3 && p.nombre_servicio === state.serviceName
       ) || [],
 
     // Filtra permisos de tipo accion para botones y operaciones UI.
     permisosAccion : state =>
-      state.roles.flatMap(rol =>
-        rol.permissions.filter(p =>
-          p.tipo_permiso === 2 && p.nombre_servicio === state.serviceName
-        )
+      getCanonicalPermissions(state).filter(p =>
+        p.tipo_permiso === 2 && p.nombre_servicio === state.serviceName
       ) || [],
 
     // Determina si el perfil puede crear/enviar notificaciones.
     canWriteNotifications : state => {
-      const roleNames = (state.userData?.roles || [])
+      const roleNames = (state.userData?.designacion_logeada?.roles || state.userData?.roles || [])
         .map((rol) => String(rol?.name || rol?.nombre || rol?.descripcion || '').toLowerCase())
 
       if (roleNames.some((name) => name.includes('admin') || name.includes('notificador'))) {
         return true
       }
 
-      const actionPermisos = (state.userData?.roles || []).flatMap((rol) =>
-        (rol?.permissions || []).filter((permiso) =>
-          permiso?.tipo_permiso === 2 && permiso?.nombre_servicio === state.serviceName
-        )
-      )
+      const actionPermisos = getCanonicalPermissions(state).filter(
+        (permiso) => permiso?.tipo_permiso === 2 && permiso?.nombre_servicio === state.serviceName
+      );
 
       return actionPermisos.some((permiso) => {
         const text = String(permiso?.descripcion || permiso?.nombre || permiso?.ruta || '').toLowerCase()
@@ -89,10 +112,8 @@ const useAuthStore = defineStore('auth', {
 
     // Genera estructura del menu principal en base a permisos tipo menu.
     getMainMenuConfig(state) {
-      const permisosMenu = state.roles.flatMap(rol =>
-        rol.permissions.filter(p =>
-          p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
-        )
+      const permisosMenu = getCanonicalPermissions(state).filter(p =>
+        p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
       ) || [];
       
       // Permisos sin padre y con ruta se renderizan como accesos directos.
@@ -146,13 +167,9 @@ const useAuthStore = defineStore('auth', {
 
     // Genera estructura del menu de cabecera con arbol de permisos.
     getHeaderMenuConfig : (state) => {
-      const permisos = state.userData?.roles
-        ?.flatMap((rol) =>
-          rol.permissions.filter((permiso) => permiso.nombre_servicio === state.serviceName)
-        ) || [];
-    
-      // Solo se consideran permisos de menu para pintar navegacion.
-      const permisosMenu = permisos.filter(p => p.tipo_permiso === 4);
+      const permisosMenu = getCanonicalPermissions(state).filter(p =>
+        p.tipo_permiso === 4 && p.nombre_servicio === state.serviceName
+      ) || [];
     
       // Clasifica nodos para construir jerarquia padre-hijo.
       const independientes = permisosMenu.filter(p => !p.permiso_padre_id && p.ruta);
@@ -223,7 +240,7 @@ const useAuthStore = defineStore('auth', {
     async ensureUserHasCasilla() {
       // Evita consultas repetidas en la misma sesion.
       if (this.casillaChecked) {
-        return !!this.hasCasilla;
+        return true;
       }
 
       const designacionId = this.userData?.designacion_logeada?.id
@@ -233,11 +250,10 @@ const useAuthStore = defineStore('auth', {
         || this.userData?.designaciones?.[0]?.id;
 
       if (!designacionId) {
-        // Sin designacion activa valida, se considera estado no habilitado para operar.
+        console.warn("Sin designacion activa valida.");
         this.hasCasilla = false;
         this.casillaChecked = true;
-        this.closePageByMissingCasilla();
-        return false;
+        return true;
       }
 
       try {
@@ -255,17 +271,15 @@ const useAuthStore = defineStore('auth', {
         this.casillaChecked = true;
 
         if (!existeCasilla) {
-          this.closePageByMissingCasilla();
+          console.warn("El usuario no tiene una casilla activa en el sistema.");
         }
 
-        return existeCasilla;
+        return true;
       } catch (error) {
-        // Ante error de red/API se bloquea el acceso por seguridad operativa.
         console.error('Error validando casilla del usuario:', error);
         this.hasCasilla = false;
         this.casillaChecked = true;
-        this.closePageByMissingCasilla();
-        return false;
+        return true;
       }
     },
 

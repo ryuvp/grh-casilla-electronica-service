@@ -40,8 +40,9 @@ import useCasillaStore from '@/stores/casillas/casillasPaginadoStore.js'
 const store = useCasillaStore();
 const authStore = useAuthStore();
 
-// Referencia al formulario modal para alta/edicion.
+// Referencia al formulario modal para alta/edicion y detalle.
 const formularioRef = useTemplateRef('formularioRef')
+const verRef = useTemplateRef('verRef')
 
 // Item activo usado en formularios y modal de detalle.
 const item = ref({ ...store.default })
@@ -108,6 +109,11 @@ function agregar() {
 // Abre modal de edicion con item actualmente sincronizado.
 function editar() {
   formularioRef.value.abrir()
+}
+
+// Abre modal de detalle.
+function abrir() {
+  verRef.value.abrir()
 }
 
 // Solicita confirmacion y ejecuta eliminacion logica de casilla.

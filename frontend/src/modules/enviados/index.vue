@@ -4,9 +4,8 @@
     <!-- Fila superior con Filtro + Botón Nuevo mensaje -->
     <div class="d-flex justify-content-between align-items-center p-3">
       <Filtro
-        :filtro="filtro"
+        @buscar="handleBuscar"
         class="flex-grow-1"
-        @update-filtro="filtro = $event"
       />
       <button
         v-if="canWriteNotifications"
@@ -19,7 +18,7 @@
 
     <!-- Contenedor principal para los paneles -->
     <div class="d-flex flex-grow-1 min-h-0">
-      <!-- Panel izquierdo (Filtro + Lista) -->
+      <!-- Panel izquierdo (Lista) -->
       <div
         ref="leftPanel"
         :style="{ width: leftWidth + 'px' }"
@@ -33,6 +32,7 @@
           @seleccionar="seleccionarMensaje"
           @page-change="handlePageChange"
           @items-per-page-change="handleSizeChange"
+          @sort="handleSort"
         />
       </div>
 
@@ -75,10 +75,16 @@ const authStore = useAuthStore()
 const item = ref(store.default)
 const formularioRef = useTemplateRef('formularioRef')
 
+// Estado local de filtros y orden (para backend)
+const queryFilters = ref({})
+const sortParams = ref({
+  sort  : 'created_at',
+  order : 'desc'
+})
+
 // Carga inicial de mensajes enviados.
 onMounted(async () => {
-  await store.fetchMensajes('enviados', { page: 1, per_page: store.pagination.per_page || 10 })
-  await store.fetchCounts()
+  await cargarBandeja()
 })
 
 // Solo perfiles admin/notificador pueden emitir notificaciones.
@@ -87,14 +93,8 @@ const canWriteNotifications = computed(() => authStore.canWriteNotifications)
 // Mensaje seleccionado para detalle.
 const selected = ref(null)
 
-// Estado local de filtros del listado.
-const filtro = ref('')
-
-// Filtra mensajes por asunto; el orden lo gestiona TablaBackend.
-const mensajesFiltrados = computed(() => {
-  return store.mensajes
-    .filter(m => m.asunto.toLowerCase().includes(filtro.value.toLowerCase()))
-})
+// Retorna directamente los mensajes del store (ya filtrados por el backend).
+const mensajesFiltrados = computed(() => store.mensajes)
 
 // Selecciona mensaje para mostrar su contenido en panel derecho.
 function seleccionarMensaje(mensaje) {
@@ -108,12 +108,37 @@ function nuevoMensaje() {
   formularioRef.value.abrir()
 }
 
+async function cargarBandeja(extraParams = {}) {
+  const params = {
+    page     : extraParams.page || store.pagination.current_page || 1,
+    per_page : extraParams.per_page || store.pagination.per_page || 10,
+    ...queryFilters.value,
+    ...sortParams.value
+  }
+
+  await store.fetchMensajes('enviados', params)
+  await store.fetchCounts()
+}
+
 async function handlePageChange(page) {
-  await store.fetchMensajes('enviados', { page, per_page: store.pagination.per_page || 10 })
+  await cargarBandeja({ page })
 }
 
 async function handleSizeChange(perPage) {
-  await store.fetchMensajes('enviados', { page: 1, per_page: perPage })
+  await cargarBandeja({ page: 1, per_page: perPage })
+}
+
+async function handleBuscar(filtros) {
+  queryFilters.value = filtros
+  await cargarBandeja({ page: 1 })
+}
+
+async function handleSort({ label, order }) {
+  sortParams.value = {
+    sort  : label,
+    order : order
+  }
+  await cargarBandeja({ page: 1 })
 }
 
 // Referencia del contenedor y ancho base del panel izquierdo.

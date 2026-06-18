@@ -34,11 +34,13 @@ Route::get('/health', function () {
 
 Route::middleware('remoteauth')->group(function () {
     Route::apiResource('/casillas', CasillaController::class);
+    Route::get('/mensajes/verificar-envios', [MensajeController::class, 'verificarEnvios']);
     Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);
     Route::get('/mensajes/destacados', [MensajeController::class, 'bandejaDestacados']);
     Route::get('/mensajes/archivados', [MensajeController::class, 'bandejaArchivados']);
     Route::get('/mensajes/enviados', [MensajeController::class, 'bandejaEnviados']);
     Route::post('/mensajes', [MensajeController::class, 'store']);
+    Route::get('/mensajes/{mensaje}/certificado-pdf', [MensajeController::class, 'generarCertificadoPdf']);
     Route::get('/mensajes/{mensaje}', [MensajeController::class, 'show']);
     Route::put('/mensajes/{mensaje}', [MensajeController::class, 'update']);
     Route::patch('/mensajes/{mensaje}', [MensajeController::class, 'update']);

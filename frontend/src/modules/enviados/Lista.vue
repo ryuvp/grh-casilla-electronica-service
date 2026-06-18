@@ -38,7 +38,7 @@
 import { computed, ref, watch } from 'vue'
 import TablaBackend from '@/components/tabla/TablaBackend.vue'
 import useDesignacionStore from '@/stores/designaciones/designacionStore'
-import { formatDateTimeLima, toTimestamp } from '@/core/utils/dateTime'
+import { formatDateTimeLima } from '@/core/utils/dateTime'
 
 const props = defineProps({
   mensajes : {
@@ -55,7 +55,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['seleccionar', 'page-change', 'items-per-page-change'])
+const emit = defineEmits(['seleccionar', 'page-change', 'items-per-page-change', 'sort'])
 const designacionStore = useDesignacionStore()
 
 // Estado de orden administrado por TablaBackend.
@@ -75,30 +75,8 @@ const selectedItems = computed(() => (props.selected ? [props.selected] : []))
 
 const pagination = computed(() => props.pagination)
 
-// Aplica orden local en base al estado emitido por TablaBackend.
-const mensajesOrdenados = computed(() => {
-  const data = [...props.mensajes]
-  const label = sortLabel.value
-  const order = sortOrder.value
-
-  const normalize = (value) => {
-    if (label === 'created_at') {
-      return toTimestamp(value)
-    }
-    return String(value ?? '').toLowerCase()
-  }
-
-  data.sort((a, b) => {
-    const av = normalize(a?.[label])
-    const bv = normalize(b?.[label])
-
-    if (av < bv) return order === 'asc' ? -1 : 1
-    if (av > bv) return order === 'asc' ? 1 : -1
-    return 0
-  })
-
-  return data
-})
+// Con ordenamiento en backend, retornamos directamente la lista del prop
+const mensajesOrdenados = computed(() => props.mensajes)
 
 // Emite al padre el item seleccionado por TablaBackend.
 function handleSeleccion({ item }) {
@@ -106,10 +84,11 @@ function handleSeleccion({ item }) {
   emit('seleccionar', item)
 }
 
-// Sincroniza estado de orden cuando el usuario hace click en el encabezado.
+// Sincroniza estado de orden cuando el usuario hace click en el encabezado y emite al padre.
 function handleSort({ label, order }) {
   sortLabel.value = label
   sortOrder.value = order
+  emit('sort', { label, order })
 }
 
 function handlePageChange(page) {

@@ -8,8 +8,8 @@
       class="border-end pe-3 bg-white d-flex flex-column h-100 overflow-hidden"
     >
       <Filtro
-        :filtro="filtro"
-        @update-filtro="filtro = $event"
+        :key="props.trayType"
+        @buscar="handleBuscar"
       />
 
       <!-- La lista toma el alto restante del panel izquierdo. -->
@@ -21,6 +21,7 @@
         @seleccionar="seleccionarMensaje"
         @page-change="handlePageChange"
         @items-per-page-change="handleSizeChange"
+        @sort="handleSort"
       />
     </div>
 
@@ -61,6 +62,16 @@ const props = defineProps({
 // Store central de mensajes para bandeja de entrada.
 const store = useMensajesStore()
 
+// Mensaje activo mostrado en el panel derecho.
+const selected = ref(null)
+
+// Estado local de filtros de la bandeja (para backend).
+const queryFilters = ref({})
+const sortParams = ref({
+  sort  : 'created_at',
+  order : 'desc'
+})
+
 // Carga inicial de mensajes al montar la vista.
 onMounted(async () => {
   await cargarBandeja()
@@ -68,20 +79,13 @@ onMounted(async () => {
 
 watch(() => props.trayType, async () => {
   selected.value = null
+  queryFilters.value = {}
+  sortParams.value = { sort: 'created_at', order: 'desc' }
   await cargarBandeja({ page: 1 })
 })
 
-// Mensaje activo mostrado en el panel derecho.
-const selected = ref(null)
-
-// Estado local de filtros de la bandeja.
-const filtro = ref('')
-
-// Filtra por asunto; el orden se resuelve en TablaBackend.
-const mensajesFiltrados = computed(() => {
-  return store.mensajes
-    .filter(m => m.asunto.toLowerCase().includes(filtro.value.toLowerCase()))
-})
+// Retorna directamente los mensajes del store (ya filtrados por el backend).
+const mensajesFiltrados = computed(() => store.mensajes)
 
 // Selecciona mensaje y marca como leido si aun no fue abierto.
 function seleccionarMensaje(mensaje) {
@@ -96,6 +100,8 @@ async function cargarBandeja(extraParams = {}) {
   const params = {
     page     : extraParams.page || store.pagination.current_page || 1,
     per_page : extraParams.per_page || store.pagination.per_page || 10,
+    ...queryFilters.value,
+    ...sortParams.value
   }
 
   await store.fetchMensajes(props.trayType, params)
@@ -113,6 +119,19 @@ async function handlePageChange(page) {
 
 async function handleSizeChange(perPage) {
   await cargarBandeja({ page: 1, per_page: perPage })
+}
+
+async function handleBuscar(filtros) {
+  queryFilters.value = filtros
+  await cargarBandeja({ page: 1 })
+}
+
+async function handleSort({ label, order }) {
+  sortParams.value = {
+    sort  : label,
+    order : order
+  }
+  await cargarBandeja({ page: 1 })
 }
 
 // Referencias y estado para redimensionar paneles.

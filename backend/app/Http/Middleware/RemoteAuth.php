@@ -14,7 +14,7 @@ class RemoteAuth
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->bearerToken();
+        $token = $request->bearerToken() ?: $request->query('token');
         //\Log::info("Token recibido: " . $token);
 
         if (!$token) {

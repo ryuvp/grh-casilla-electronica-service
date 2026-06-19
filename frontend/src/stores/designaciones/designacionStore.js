@@ -112,6 +112,29 @@ export const useDesignacionStore = defineStore('designacionStore', {
       }
     },
 
+    async searchDesignaciones(query) {
+      const search = String(query || '').trim()
+      if (search.length < 2) return []
+
+      try {
+        const response = await ApiAuthService.get('/designaciones/buscar-destinatarios', {
+          search,
+          per_page : 20,
+        })
+
+        const candidatos = Array.isArray(response?.data?.data) ? response.data.data : []
+        candidatos.forEach((item) => {
+          if (item?.designacion_id) {
+            this.resumenByDesignacionId[item.designacion_id] = item
+          }
+        })
+        return candidatos
+      } catch (error) {
+        console.error('Error buscando designaciones:', error)
+        return []
+      }
+    },
+
     // Resuelve actor por casilla para mostrar etiquetas De/Para en mensajeria.
     async resolveActorByCasillaId(casillaId) {
       if (!casillaId) return null

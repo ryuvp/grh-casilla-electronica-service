@@ -1,14 +1,14 @@
 <template>
-  <div ref="containerRef" class="enviados-layout d-flex flex-column w-100">
+  <div ref="containerRef" class="enviados-layout d-flex flex-column w-100 h-100">
 
     <!-- Fila superior con Filtro + Botón Nuevo mensaje -->
-    <div class="d-flex justify-content-between align-items-center p-3">
+    <div class="d-flex justify-content-between align-items-center p-3 bg-white flex-shrink-0">
       <Filtro
         @buscar="handleBuscar"
         class="flex-grow-1"
       />
       <button
-        v-if="canWriteNotifications"
+        v-show="!selected && canWriteNotifications"
         class="btn btn-primary ms-3" 
         @click="nuevoMensaje"
       >
@@ -20,9 +20,8 @@
     <div class="d-flex flex-grow-1 min-h-0">
       <!-- Panel izquierdo (Lista) -->
       <div
-        ref="leftPanel"
-        :style="{ width: leftWidth + 'px' }"
-        class="border-end pe-3 bg-white d-flex flex-column h-100 overflow-hidden"
+        v-show="!selected"
+        class="w-100 d-flex flex-column h-100 overflow-hidden bg-white"
       >
         <Lista
           class="flex-grow-1 min-h-0"
@@ -36,16 +35,17 @@
         />
       </div>
 
-      <!-- Separador -->
-      <div
-        ref="resizer"
-        class="resizer"
-        @mousedown="startResizing"
-      ></div>
-
       <!-- Panel derecho (Contenido) -->
-      <div class="flex-grow-1 ps-3 bg-white h-100 overflow-auto">
-        <Contenido :mensaje="selected" @cerrar="selected = null" />
+      <div v-if="selected" class="w-100 bg-white h-100 d-flex flex-column overflow-hidden">
+        <!-- Botón Volver a enviados -->
+        <div class="px-4 pt-3 pb-2 border-bottom bg-light bg-opacity-50 flex-shrink-0">
+          <button class="btn btn-sm btn-light border px-4" @click="selected = null">
+            <i class="bi bi-arrow-left me-1"></i> Volver a enviados
+          </button>
+        </div>
+        <div class="flex-grow-1 overflow-auto">
+          <Contenido :mensaje="selected" @cerrar="selected = null" />
+        </div>
       </div>
     </div>
 
@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
+import { ref, computed, onMounted, useTemplateRef } from 'vue'
 import Filtro from './Filtro.vue'
 import Lista from './Lista.vue'
 import Contenido from './Contenido.vue'
@@ -140,41 +140,6 @@ async function handleSort({ label, order }) {
   }
   await cargarBandeja({ page: 1 })
 }
-
-// Referencia del contenedor y ancho base del panel izquierdo.
-const containerRef = ref(null)
-const leftPanel = ref(null)
-const resizer = ref(null)
-const leftWidth = ref(400) // ancho inicial en px
-
-let isResizing = false
-
-// Inicia redimension y listeners globales de mouse.
-function startResizing() {
-  isResizing = true
-  document.addEventListener('mousemove', resize)
-  document.addEventListener('mouseup', stopResizing)
-}
-
-// Recalcula ancho del panel izquierdo dentro de limites definidos.
-function resize(e) {
-  if (!isResizing || !containerRef.value) return
-  const containerLeft = containerRef.value.getBoundingClientRect().left
-  const newWidth = e.clientX - containerLeft
-  if (newWidth >= 200 && newWidth <= 800) {
-    leftWidth.value = newWidth
-  }
-}
-
-// Finaliza redimension y limpia listeners.
-function stopResizing() {
-  isResizing = false
-  document.removeEventListener('mousemove', resize)
-  document.removeEventListener('mouseup', stopResizing)
-}
-
-// Limpieza de listeners al desmontar la vista.
-onBeforeUnmount(() => stopResizing())
 </script>
 
 <style scoped>
@@ -182,13 +147,5 @@ onBeforeUnmount(() => stopResizing())
 .enviados-layout {
   height: calc(100dvh - 145px);
   min-height: 540px;
-}
-
-.resizer {
-  width: 6px;
-  cursor: col-resize;
-  background-color: #e0e0e0;
-  position: relative;
-  z-index: 10;
 }
 </style>

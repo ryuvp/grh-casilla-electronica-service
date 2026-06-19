@@ -41,6 +41,8 @@ Route::middleware('remoteauth')->group(function () {
     Route::get('/mensajes/enviados', [MensajeController::class, 'bandejaEnviados']);
     Route::post('/mensajes', [MensajeController::class, 'store']);
     Route::get('/mensajes/{mensaje}/certificado-pdf', [MensajeController::class, 'generarCertificadoPdf']);
+    Route::get('/mensajes/{mensaje}/constancia-envio-pdf', [MensajeController::class, 'generarConstanciaEnvioPdf']);
+    Route::get('/mensajes/{mensaje}/constancia-lectura-pdf', [MensajeController::class, 'generarConstanciaLecturaPdf']);
     Route::get('/mensajes/{mensaje}', [MensajeController::class, 'show']);
     Route::put('/mensajes/{mensaje}', [MensajeController::class, 'update']);
     Route::patch('/mensajes/{mensaje}', [MensajeController::class, 'update']);

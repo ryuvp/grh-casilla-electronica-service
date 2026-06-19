@@ -69,7 +69,11 @@ onMounted(async () => {
   // Metronic: obtiene la instancia si ya existe
   toggleObj = ToggleComponent.getInstance(toggleRef.value);
 
-  if (!toggleObj) return;
+  if (!toggleObj) {
+    toggleObj = new ToggleComponent(toggleRef.value, {
+      saveState : false
+    });
+  }
 
   // Evita crear funciones anónimas sueltas: guardamos la referencia
   onChangeHandler = () => {

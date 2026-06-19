@@ -43,6 +43,23 @@
             {{ prioridadTexto(mensaje.prioridad) }}
           </span>
         </span>
+        <div class="mt-2 d-flex gap-2">
+          <button
+            class="btn btn-sm btn-outline-danger"
+            @click="descargarConstanciaEnvio"
+          >
+            <i class="bi bi-file-pdf me-1"></i> Constancia de Envío PDF
+          </button>
+          <button
+            class="btn btn-sm"
+            :class="mensaje.leido ? 'btn-outline-danger' : 'btn-outline-secondary'"
+            :disabled="!mensaje.leido"
+            :title="mensaje.leido ? 'Descargar constancia de lectura' : 'El mensaje aún no ha sido leído'"
+            @click="descargarConstanciaLectura"
+          >
+            <i class="bi bi-file-pdf me-1"></i> Constancia de Lectura PDF
+          </button>
+        </div>
       </div>
     </div>
 
@@ -86,6 +103,7 @@ import useDesignacionStore from '@/stores/designaciones/designacionStore'
 import useAuthStore from '@/stores/auth/authStore'
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
 import { formatDateTimeLima } from '@/core/utils/dateTime'
+import JwtService from '@/core/services/JwtService'
 
 const props = defineProps({
   mensaje : {
@@ -170,6 +188,30 @@ async function toggleArchivado() {
     console.error('Error alternando archivado:', error)
     Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el archivado.' })
   }
+}
+
+function descargarConstanciaEnvio() {
+  if (!props.mensaje?.id) return
+  const token = JwtService.getToken()
+  const baseApi = import.meta.env.VITE_API_URL || 'http://localhost:8089/api'
+  const url = `${baseApi}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${token}`
+  window.open(url, '_blank')
+}
+
+function descargarConstanciaLectura() {
+  if (!props.mensaje?.id) return
+  if (!props.mensaje.leido) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'No disponible',
+      text: 'La constancia de lectura solo se puede descargar después de que el destinatario haya leído el mensaje.'
+    })
+    return
+  }
+  const token = JwtService.getToken()
+  const baseApi = import.meta.env.VITE_API_URL || 'http://localhost:8089/api'
+  const url = `${baseApi}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${token}`
+  window.open(url, '_blank')
 }
 </script>
 

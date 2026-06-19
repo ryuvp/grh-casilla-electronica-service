@@ -715,6 +715,101 @@ class MensajeController extends Controller
     }
 
     /**
+     * Genera la constancia de notificación electrónica (envío/depósito).
+     */
+    public function generarConstanciaEnvioPdf(Request $request, Mensaje $mensaje)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (
+            $mensaje->casilla_origen_id !== $casillaAuth->id &&
+            $mensaje->casilla_destino_id !== $casillaAuth->id
+        ) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $token = $request->bearerToken() ?: $request->query('token');
+
+        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+
+        $remitente = [];
+        $destinatario = [];
+        if ($casillaOrigen) {
+            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+        }
+        if ($casillaDestino) {
+            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+        }
+
+        $fecha_envio = $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_envio', [
+            'mensaje' => $mensaje,
+            'casillaOrigen' => $casillaOrigen,
+            'casillaDestino' => $casillaDestino,
+            'remitente' => $remitente,
+            'destinatario' => $destinatario,
+            'fecha_envio' => $fecha_envio
+        ]);
+
+        return $pdf->stream('Constancia_Envio_' . $mensaje->id . '.pdf');
+    }
+
+    /**
+     * Genera la constancia de lectura de notificación electrónica.
+     */
+    public function generarConstanciaLecturaPdf(Request $request, Mensaje $mensaje)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (
+            $mensaje->casilla_origen_id !== $casillaAuth->id &&
+            $mensaje->casilla_destino_id !== $casillaAuth->id
+        ) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$mensaje->leido || !$mensaje->read_at) {
+            return response()->json(['error' => 'El mensaje aun no ha sido leido por el destinatario'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $token = $request->bearerToken() ?: $request->query('token');
+
+        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+
+        $remitente = [];
+        $destinatario = [];
+        if ($casillaOrigen) {
+            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+        }
+        if ($casillaDestino) {
+            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+        }
+
+        $fecha_lectura = $mensaje->read_at->setTimezone('America/Lima')->format('d/m/Y H:i:s');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_lectura', [
+            'mensaje' => $mensaje,
+            'casillaOrigen' => $casillaOrigen,
+            'casillaDestino' => $casillaDestino,
+            'remitente' => $remitente,
+            'destinatario' => $destinatario,
+            'fecha_lectura' => $fecha_lectura
+        ]);
+
+        return $pdf->stream('Constancia_Lectura_' . $mensaje->id . '.pdf');
+    }
+
+
+    /**
      * Obtiene los detalles de la designación desde el Auth Service.
      */
     private function fetchActorDetailsByDesignacionId(int $designacionId, string $token): array

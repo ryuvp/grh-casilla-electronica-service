@@ -38,7 +38,7 @@
     <!-- Filtros de fecha -->
     <template v-if="showDateFilter">
       <div class="d-flex flex-column flex-md-row gap-3 w-100">
-        <div class="flex-shrink-0 w-100 w-md-auto" style="min-width: 0;">
+        <div v-if="dateFields && dateFields.length > 1" class="flex-shrink-0 w-100 w-md-auto" style="min-width: 0;">
           <label class="form-label">Fecha por:</label>
           <el-select
             v-model="dateField"

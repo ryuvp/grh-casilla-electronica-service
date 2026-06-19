@@ -117,7 +117,8 @@ function abrir() {
 }
 
 // Solicita confirmacion y ejecuta eliminacion logica de casilla.
-function eliminar(rowItem) {
+function eliminar(items) {
+  const rowItem = Array.isArray(items) ? items[0] : items;
   if (!rowItem || !rowItem.id) return
 
   Swal.fire({

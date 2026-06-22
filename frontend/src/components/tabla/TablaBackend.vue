@@ -3,7 +3,7 @@
     <div class="table-responsive custom-scrollbar">
       <table class="table align-middle table-row-dashed fs-6 gy-4">
         <thead class="sticky-thead fs-7">
-          <tr>
+          <tr class="text-uppercase">
             <th
               v-for="header in columns"
               :key="header.columnLabel"

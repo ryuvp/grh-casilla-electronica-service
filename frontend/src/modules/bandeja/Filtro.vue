@@ -1,5 +1,5 @@
 <template>
-  <div class="mb-3 w-100">
+  <div class="ce-filter-wrap w-100">
     <FiltroBackend
       :search="search"
       :search-field="searchField"
@@ -17,26 +17,19 @@
 
 <script setup>
 import useQueryBuilder from '@/composables/useQueryBuilder'
-import FiltroBackend from '@/components/tabla/FiltroBackend.vue'
+import FiltroBackend   from '@/components/tabla/FiltroBackend.vue'
 
 const emit = defineEmits(['buscar'])
 
 const searchableFields = [
-  { label: 'Asunto', value: 'asunto' },
+  { label: 'Asunto',    value: 'asunto'    },
   { label: 'Contenido', value: 'contenido' },
 ]
-
 const dateFields = [
   { label: 'Fecha de Envío', value: 'created_at' },
 ]
 
-const {
-  search,
-  searchField,
-  dateStart,
-  dateEnd,
-  dateField,
-} = useQueryBuilder({
+const { search, searchField, dateStart, dateEnd, dateField } = useQueryBuilder({
   search      : '',
   searchField : ['asunto'],
   dateStart   : '',
@@ -45,7 +38,5 @@ const {
   searchableFields,
 })
 
-const handleBuscar = (filtros) => {
-  emit('buscar', filtros)
-}
+const handleBuscar = (filtros) => emit('buscar', filtros)
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="enviados-layout d-flex flex-column w-100 h-100">
+  <div ref="containerRef" class="card enviados-layout d-flex flex-column w-100 h-100">
 
     <!-- Fila superior con Filtro + Botón Nuevo mensaje -->
     <div class="d-flex justify-content-between align-items-center p-3 bg-white flex-shrink-0">

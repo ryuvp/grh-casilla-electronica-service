@@ -1,16 +1,26 @@
 <template>
-  <div>
-    <Filtro />
-    <BotonesAccion
-      ref="botonesAccionRef"
-      :buttons="botonesAccion"
-      :permissions="authStore.permisosAccion"
-      @ver="abrir"
-      @editar="editar"
-      @agregar="agregar"
-      @eliminar="() => eliminar(store.seleccionados)"
-    />
-    <Lista />
+  <div class="card">
+    <div class="card-header border-0 py-3 gap-3">
+      <div class="flex-grow-1">
+        <Filtro />
+      </div>
+      <div class="d-flex align-items-center flex-shrink-0">
+        <BotonesAccion
+          ref="botonesAccionRef"
+          :buttons="botonesAccion"
+          :permissions="authStore.permisosAccion"
+          @ver="abrir"
+          @editar="editar"
+          @agregar="agregar"
+          @eliminar="() => eliminar(store.seleccionados)"
+        />
+      </div>
+    </div>
+
+    <div class="px-6 pt-0 pb-0">
+      <Lista />
+    </div>
+
     <Formulario
       ref="formularioRef"
       :item="item"

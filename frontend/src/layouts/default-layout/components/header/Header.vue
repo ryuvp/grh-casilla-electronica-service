@@ -16,6 +16,7 @@
       :class="{
         'container-fluid': headerWidthFluid,
       }"
+      style="border-bottom: 1px solid rgba(0,0,0,0.08); box-shadow: 0 2px 6px rgba(0,0,0,0.06);"
     >
       <div
         v-if="layout === 'light-header' || layout === 'dark-header'"

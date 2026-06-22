@@ -10,7 +10,7 @@
         <!--begin::Main-->
         <div id="kt_app_main" class="app-main flex-column flex-row-fluid">
           <!--begin::Content wrapper-->
-          <div class="d-flex flex-column flex-column-fluid">
+          <div class="d-flex flex-column flex-column-fluid pt-3">
             <!-- <KTToolbar /> -->
             <div id="kt_app_content" class="app-content flex-column-fluid">
               <KTContent />

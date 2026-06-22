@@ -1,247 +1,171 @@
 <template>
-  <TablaBackend
-    ref="tablaRef"
-    :items="mensajesOrdenados"
-    :columns="columns"
-    :pagination="pagination"
-    :multi-select="false"
-    :selected-items="selectedItems"
-    :sort-label="sortLabel"
-    :sort-order="sortOrder"
-    @row-select="handleSeleccion"
-    @sort="handleSort"
-    @page-change="handlePageChange"
-    @items-per-page-change="handleSizeChange"
-  >
-    <template #row="{ item }">
-      <td class="align-middle py-3 px-4 position-relative border-bottom" :class="{ 'unread-row': !item.leido }">
-        <!-- Unread left bar indicator -->
-        <div v-if="!item.leido" class="unread-indicator"></div>
-        
-        <div class="d-flex align-items-center gap-3">
-          <!-- Initials Avatar -->
-          <div class="avatar-circle shadow-sm" :style="getAvatarStyle(getDeTexto(item))">
-            {{ getInitials(getDeTexto(item)) }}
-          </div>
-          
-          <!-- Message text details -->
-          <div class="flex-grow-1 min-w-0">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span class="fw-bold text-dark text-uppercase fs-7 de-remitente" :title="getDeTexto(item)">
-                {{ getDeTexto(item) }}
-              </span>
-              <span class="text-muted small text-nowrap ms-2">
-                <i class="bi bi-clock me-1"></i>{{ formatDate(item.created_at) }}
-              </span>
-            </div>
-            <div class="text-truncate" :class="{ 'fw-bold text-dark': !item.leido, 'text-muted': item.leido }" style="font-size: 13px;">
-              {{ item.asunto }}
-            </div>
-          </div>
+  <div class="ce-gmail-wrap">
+
+    <!-- Toolbar -->
+    <div class="ce-gmail-toolbar">
+      <div class="d-flex align-items-center gap-2">
+        <span><strong>{{ pagination.total }}</strong> mensajes</span>
+        <span v-if="noLeidos > 0" class="ce-unread-badge">{{ noLeidos }} sin leer</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted">Por página:</span>
+        <select class="ce-per-page" @change="$emit('items-per-page-change', +$event.target.value)">
+          <option v-for="n in [10,25,50]" :key="n" :value="n" :selected="pagination.per_page==n">{{ n }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div v-if="!mensajes.length" class="ce-gmail-empty">
+      <div class="ce-gmail-empty-icon"><i class="bi bi-inbox"></i></div>
+      <p>Bandeja vacía</p>
+      <p style="font-size:13px;color:#94a3b8;">No hay mensajes en esta sección</p>
+    </div>
+
+    <!-- Rows -->
+    <div v-else class="ce-gmail-rows">
+      <div
+        v-for="item in mensajes"
+        :key="item.id"
+        class="ce-gmail-row"
+        :class="{
+          'ce-gmail-row--unread'   : !item.leido,
+          'ce-gmail-row--selected' : isSelected(item),
+        }"
+        @click="selectItem(item)"
+      >
+        <!-- Checkbox -->
+        <div class="ce-col-check" @click.stop>
+          <input type="checkbox" />
         </div>
-      </td>
-    </template>
-  </TablaBackend>
+
+        <!-- Star -->
+        <div
+          class="ce-col-star"
+          :class="{ 'ce-col-star--active': item.destacado }"
+          :title="item.destacado ? 'Destacado' : 'Sin destacar'"
+          @click.stop
+        >
+          <i :class="item.destacado ? 'bi bi-star-fill' : 'bi bi-star'"></i>
+        </div>
+
+        <!-- Sender -->
+        <div class="ce-col-sender" :title="getDeTexto(item)">{{ getDeTexto(item) }}</div>
+
+        <!-- Subject + preview -->
+        <div class="ce-col-content">
+          <span class="ce-col-subject">{{ item.asunto }}</span>
+          <span v-if="previewTexto(item)" class="ce-col-preview"> &mdash; {{ previewTexto(item) }}</span>
+          <span v-if="item.prioridad === 1" class="ce-row-chip ce-row-chip--red ms-1">Alta</span>
+          <span v-else-if="item.prioridad === 2" class="ce-row-chip ce-row-chip--yellow ms-1">Media</span>
+          <span v-if="item.adjuntos?.length" class="ce-row-chip ce-row-chip--clip ms-1">
+            <i class="bi bi-paperclip"></i>
+          </span>
+        </div>
+
+        <!-- Date -->
+        <div class="ce-col-date">{{ formatDateShort(item.created_at) }}</div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="pagination.total > 0" class="ce-gmail-footer">
+      <span>{{ paginationFrom }}–{{ paginationTo }} de {{ pagination.total }}</span>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
+          <li class="page-item" :class="{ disabled: pagination.current_page <= 1 }">
+            <a class="page-link ce-page-link" href="#" @click.prevent="goToPage(pagination.current_page - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          <li
+            v-for="(p, i) in visiblePages" :key="i"
+            class="page-item"
+            :class="{ active: p === pagination.current_page, disabled: p === '…' }"
+          >
+            <a class="page-link ce-page-link" href="#" @click.prevent="p !== '…' && goToPage(p)">{{ p }}</a>
+          </li>
+          <li class="page-item" :class="{ disabled: pagination.current_page >= totalPages }">
+            <a class="page-link ce-page-link" href="#" @click.prevent="goToPage(pagination.current_page + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import TablaBackend from '@/components/tabla/TablaBackend.vue'
 import useDesignacionStore from '@/stores/designaciones/designacionStore'
 import { formatDateTimeLima } from '@/core/utils/dateTime'
 
 const props = defineProps({
-  mensajes : {
-    type     : Array,
-    required : true
-  },
-  pagination : {
-    type     : Object,
-    required : true
-  },
-  selected : {
-    type    : Object,
-    default : null
-  }
+  mensajes   : { type: Array,  required: true },
+  pagination : { type: Object, required: true },
+  selected   : { type: Object, default: null },
+})
+const emit = defineEmits(['seleccionar', 'page-change', 'items-per-page-change', 'sort'])
+
+const designacionStore   = useDesignacionStore()
+const deTextoByMensajeId = ref({})
+let cargaActual          = 0
+
+const noLeidos   = computed(() => props.mensajes.filter(m => !m.leido).length)
+const totalPages = computed(() => Math.ceil((props.pagination.total || 0) / (props.pagination.per_page || 10)))
+
+const paginationFrom = computed(() => {
+  const { current_page: c, per_page: p } = props.pagination
+  return Math.max(1, (c - 1) * p + 1)
+})
+const paginationTo = computed(() => {
+  const { current_page: c, per_page: p, total: t } = props.pagination
+  return Math.min(c * p, t)
+})
+const visiblePages = computed(() => {
+  const cur = props.pagination.current_page, tot = totalPages.value
+  if (tot <= 7) return Array.from({ length: tot }, (_, i) => i + 1)
+  const pages = [1]
+  if (cur > 3)       pages.push('…')
+  for (let i = Math.max(2, cur - 1); i <= Math.min(tot - 1, cur + 1); i++) pages.push(i)
+  if (cur < tot - 2) pages.push('…')
+  pages.push(tot)
+  return pages
 })
 
-const emit = defineEmits(['seleccionar', 'page-change', 'items-per-page-change', 'sort'])
-const designacionStore = useDesignacionStore()
-
-const sortLabel = ref('created_at')
-const sortOrder = ref('desc')
-const deTextoByMensajeId = ref({})
-let cargaActual = 0
-
-const columns = ref([
-  { columnName: 'Bandeja de Entrada', columnLabel: 'asunto', sortEnabled: false, width: '100%' }
-])
-
-const selectedItems = computed(() => (props.selected ? [props.selected] : []))
-const pagination = computed(() => props.pagination)
-const mensajesOrdenados = computed(() => props.mensajes)
-
-function handleSeleccion({ item }) {
-  if (!item) return
-  emit('seleccionar', item)
-}
-
-function handleSort({ label, order }) {
-  sortLabel.value = label
-  sortOrder.value = order
-  emit('sort', { label, order })
-}
-
-function handlePageChange(page) {
+const isSelected  = (item) => props.selected?.id === item.id
+const selectItem  = (item) => emit('seleccionar', item)
+const goToPage    = (page) => {
+  if (page < 1 || page > totalPages.value) return
   emit('page-change', page)
 }
-
-function handleSizeChange(perPage) {
-  emit('items-per-page-change', perPage)
+const getDeTexto  = (item) => deTextoByMensajeId.value[item.id] || `Casilla ${item.casilla_origen_id}`
+const previewTexto = (item) => {
+  if (!item.contenido) return ''
+  return item.contenido.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 80)
 }
-
-function formatDate(fechaStr) {
-  return formatDateTimeLima(fechaStr)
-}
-
-function getDeTexto(item) {
-  return deTextoByMensajeId.value[item.id] || `Casilla ${item.casilla_origen_id}`
-}
-
-function getAvatarStyle(name) {
-  const colors = [
-    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
-    '#5a5c69', '#fd7e14', '#6f42c1', '#e83e8c', '#20c997'
-  ];
-  let hash = 0;
-  const str = String(name || '');
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % colors.length;
-  return {
-    backgroundColor: colors[index]
-  };
-}
-
-function getInitials(name) {
-  const str = String(name || '').trim();
-  if (!str || str.startsWith('Casilla')) return 'C';
-  const parts = str.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return str[0].toUpperCase();
+const formatDateShort = (d) => {
+  if (!d) return ''
+  const date = new Date(d)
+  const now  = new Date()
+  if (date.toDateString() === now.toDateString())
+    return date.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })
 }
 
 async function cargarRemitentes(mensajes = []) {
-  const mensajesValidos = mensajes.filter(m => m?.id && m?.casilla_origen_id)
-  if (!mensajesValidos.length) {
-    deTextoByMensajeId.value = {}
-    return
-  }
-
-  const cargaId = ++cargaActual
-  const actores = await Promise.all(
-    mensajesValidos.map((mensaje) => designacionStore.resolveActorByCasillaId(mensaje.casilla_origen_id))
-  )
-
-  if (cargaId !== cargaActual) return
-
-  const nuevosTextos = {}
-  mensajesValidos.forEach((mensaje, index) => {
-    const actor = actores[index]
-    nuevosTextos[mensaje.id] = actor?.usuario_nombre || `Casilla ${mensaje.casilla_origen_id}`
-  })
-
-  deTextoByMensajeId.value = nuevosTextos
+  const validos = mensajes.filter(m => m?.id && m?.casilla_origen_id)
+  if (!validos.length) { deTextoByMensajeId.value = {}; return }
+  const id = ++cargaActual
+  const actores = await Promise.all(validos.map(m => designacionStore.resolveActorByCasillaId(m.casilla_origen_id)))
+  if (id !== cargaActual) return
+  const map = {}
+  validos.forEach((m, i) => { map[m.id] = actores[i]?.usuario_nombre || `Casilla ${m.casilla_origen_id}` })
+  deTextoByMensajeId.value = map
 }
 
-watch(
-  () => props.mensajes.map(m => `${m.id}:${m.casilla_origen_id}`).join('|'),
-  () => {
-    cargarRemitentes(props.mensajes)
-  },
-  { immediate: true }
-)
+watch(() => props.mensajes.map(m => `${m.id}:${m.casilla_origen_id}`).join('|'),
+  () => cargarRemitentes(props.mensajes), { immediate: true })
 </script>
-
-<style scoped>
-:deep(.table-container) {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.custom-scrollbar) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-:deep(.table-responsive) {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-:deep(table) {
-  margin-bottom: 0;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-:deep(thead) {
-  display: none;
-}
-
-:deep(tbody tr) {
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-
-:deep(tbody tr:hover) {
-  background-color: #f8f9fa !important;
-}
-
-:deep(tbody tr.table-success) {
-  background-color: #e8f0fe !important;
-}
-
-:deep(tbody tr.table-success .text-dark) {
-  color: #1a73e8 !important;
-}
-
-.unread-row {
-  background-color: rgba(13, 110, 253, 0.03);
-}
-
-.unread-indicator {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background-color: #0d6efd;
-}
-
-.avatar-circle {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  color: white;
-  flex-shrink: 0;
-  text-transform: uppercase;
-}
-
-.de-remitente {
-  display: inline-block;
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>

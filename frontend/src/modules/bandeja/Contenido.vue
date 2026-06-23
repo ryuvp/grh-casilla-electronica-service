@@ -1,5 +1,5 @@
 <template>
-  <div v-if="mensaje">
+  <div v-if="mensaje" style="display:flex; flex-direction:column; height:100%; overflow:hidden;">
 
     <!-- Drawer header -->
     <div class="ce-drawer__header">

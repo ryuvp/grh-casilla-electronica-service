@@ -118,10 +118,10 @@ export const useMensajesStore = defineStore('mensajes', {
             .map(r => r.value)
 
           mensaje.adjuntos = mensaje.archivos.map(a => ({
-            url    : a.url_visualizar || a.url,
+            id     : a.id,
             nombre : a.nombre_original || a.nombre_archivo || a.nombre || 'Archivo adjunto',
             tamaño : a.tamanio ? (Math.round(a.tamanio / 1024) + ' KB') : null,
-            tipo   : a.mime_type || a.tipo
+            tipo   : a.mime_type || a.tipo,
           }))
 
           mensaje.archivosCargados = true

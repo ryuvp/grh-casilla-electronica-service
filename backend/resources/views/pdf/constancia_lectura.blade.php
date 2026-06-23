@@ -4,124 +4,167 @@
     <meta charset="UTF-8">
     <title>Constancia de Lectura de Notificación Electrónica</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            color: #1a202c;
-            font-size: 11px;
-            line-height: 1.5;
-            margin: 0;
-            padding: 20px;
+        @page {
+            margin-top: 1.0cm;
+            margin-bottom: 2.0cm;
+            margin-left: 3.0cm;
+            margin-right: 3.0cm;
         }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            font-size: 11pt;
+            line-height: 1.0;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── Logo ─────────────────────────────────────────── */
+        .logo-header {
+            text-align: left;
+            margin-bottom: 8pt;
+        }
+        .logo-header img {
+            height: 50pt;
+            width: auto;
+        }
+
+        /* ── Decenio ──────────────────────────────────────── */
         .decenio-header {
             text-align: center;
-            font-size: 9px;
-            color: #718096;
-            margin-bottom: 20px;
-            line-height: 1.3;
+            font-size: 8.5pt;
+            color: #333;
+            line-height: 1.0;
+            margin: 0;
         }
-        .header {
-            position: relative;
-            margin-bottom: 40px;
-            min-height: 80px;
-        }
-        .title-container {
-            width: 60%;
-            float: left;
+
+        /* ── Título + Número ──────────────────────────────── */
+        /* 2 líneas en blanco desde decenio → título */
+        .titulo-bloque {
+            margin-top: 30pt;
             text-align: center;
-            padding-top: 10px;
         }
         .main-title {
-            font-size: 13px;
+            font-size: 13pt;
             font-weight: bold;
             color: #000;
-            margin-bottom: 5px;
             text-transform: uppercase;
+            line-height: 1.0;
+            margin: 0;
         }
+        /* 1 enter desde título → número */
         .doc-number {
-            font-size: 16px;
+            font-size: 13pt;
             font-weight: bold;
             color: #000;
+            text-align: center;
+            margin-top: 11pt;
         }
-        .signature-box {
-            width: 250px;
-            float: right;
-            border: 1px dashed #718096;
-            background-color: #f7fafc;
-            padding: 8px 12px;
-            font-size: 9px;
-            color: #2d3748;
-            border-radius: 4px;
-            box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
-        }
-        .signature-title {
-            font-weight: bold;
-            color: #1a202c;
-        }
-        .clear {
-            clear: both;
-        }
+
+        /* ── Destinatario ─────────────────────────────────── */
+        /* 2–3 enters desde número → Estimado */
         .metadata-section {
-            margin-bottom: 30px;
-            font-size: 12px;
+            margin-top: 38pt;
+            font-size: 11pt;
         }
         .metadata-table {
             width: 100%;
             border-collapse: collapse;
         }
+        /* espacio sencillo entre filas del bloque */
         .metadata-table td {
-            padding: 5px 0;
+            padding: 0 0 9pt 0;
             vertical-align: top;
+            color: #000;
+            font-size: 11pt;
+            line-height: 1.0;
+        }
+        .metadata-table tr:last-child td {
+            padding-bottom: 0;
         }
         .label {
-            width: 22%;
+            width: 25%;
             font-weight: bold;
             color: #000;
         }
         .separator {
-            width: 3%;
-            text-align: center;
+            width: 6.5%;
+            text-align: left;
+            color: #000;
         }
         .value {
-            width: 75%;
-            color: #2d3748;
+            width: 67%;
+            color: #000;
         }
+
+        /* ── Cuerpo ───────────────────────────────────────── */
+        /* 2 enters desde Nro. Documento → párrafo */
         .content-section {
-            font-size: 11px;
+            margin-top: 38pt;
+            font-size: 11pt;
             text-align: justify;
-            margin-bottom: 20px;
+            color: #000;
         }
+        /* 2 enters entre párrafos */
         .content-section p {
-            margin-bottom: 15px;
-            text-indent: 0;
+            margin: 0 0 10pt 0;
+            line-height: 1.5;
+            color: #000;
         }
+        .content-section p:last-child {
+            margin-bottom: 0;
+        }
+        .content-section strong {
+            color: #000;
+        }
+
+        /* ── Pie de página ────────────────────────────────── */
+        /* pegado al margen inferior */
         .footer {
-            margin-top: 50px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 15px;
-            font-size: 8px;
-            color: #718096;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #ccc;
+            padding-top: 6pt;
+            font-size: 7.5pt;
+            color: #555;
             text-align: center;
         }
         .footer-hash {
             font-family: monospace;
-            font-size: 9px;
-            color: #4a5568;
-            margin-top: 4px;
+            font-size: 8.5pt;
+            color: #333;
+            margin-top: 3pt;
             font-weight: bold;
         }
     </style>
 </head>
 <body>
+
+@php
+    $logoPath = public_path('img/logo.png');
+    $logoSrc  = '';
+    if (file_exists($logoPath)) {
+        $raw     = file_get_contents($logoPath);
+        $logoSrc = 'data:image/png;base64,' . base64_encode($raw);
+    }
+@endphp
+
+    @if ($logoSrc)
+    <div class="logo-header">
+        <img src="{{ $logoSrc }}" alt="Gobierno Regional Huánuco" />
+    </div>
+    @endif
+
     <div class="decenio-header">
         "Decenio de la igualdad de oportunidades para mujeres y hombres"<br>
         "Año de la recuperación y consolidación de la economía peruana"
     </div>
 
-    <div class="header">
-        <div class="title-container">
-            <div class="main-title">CONSTANCIA DE LECTURA DE NOTIFICACION ELECTRONICA</div>
-            <div class="doc-number">{{ str_pad($mensaje->id, 7, '0', STR_PAD_LEFT) }}</div>
-        </div>
+    <div class="titulo-bloque">
+        <div class="main-title">CONSTANCIA DE LECTURA DE NOTIFICACION ELECTRONICA</div>
+        <div class="doc-number">{{ str_pad($mensaje->id, 7, '0', STR_PAD_LEFT) }}</div>
     </div>
 
     <div class="metadata-section">
@@ -129,12 +172,12 @@
             <tr>
                 <td class="label">Estimado(a)</td>
                 <td class="separator">:</td>
-                <td class="value" style="font-weight: bold; text-transform: uppercase;">{{ data_get($destinatario, 'usuario_nombre', 'N/A') }}</td>
+                <td class="value" style="text-transform: uppercase;">{{ data_get($destinatario, 'usuario_nombre', 'N/A') }}</td>
             </tr>
             <tr>
                 <td class="label">Nro. Documento</td>
                 <td class="separator">:</td>
-                <td class="value" style="font-weight: bold;">{{ data_get($destinatario, 'numero_documento', 'N/A') }}</td>
+                <td class="value">{{ data_get($destinatario, 'numero_documento', 'N/A') }}</td>
             </tr>
         </table>
     </div>
@@ -152,5 +195,6 @@
         <div>CÓDIGO DE VERIFICACIÓN DE TRAZABILIDAD SEGURO (SHA-1)</div>
         <div class="footer-hash">SHA1-LECTURA-{{ $mensaje->id }}-{{ strtotime($mensaje->read_at) }}</div>
     </div>
+
 </body>
 </html>

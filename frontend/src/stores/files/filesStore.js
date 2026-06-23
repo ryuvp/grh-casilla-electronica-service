@@ -78,6 +78,16 @@ export const useFileStore = defineStore('fileStore', {
       }
     },
 
+    async validarFirma(id) {
+      try {
+        const data = await ApiFileService.get(`/validar/${id}`)
+        return data.data?.data || data.data
+      } catch (error) {
+        console.error(`Error al validar firma archivo ${id}:`, error)
+        throw error
+      }
+    },
+
     limpiar() {
       this.archivos = []
     }

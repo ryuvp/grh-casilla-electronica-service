@@ -79,14 +79,12 @@
           {{ mensaje.adjuntos.length }} {{ mensaje.adjuntos.length === 1 ? 'archivo adjunto' : 'archivos adjuntos' }}
         </div>
         <div class="ce-att-grid">
-          <a
+          <div
             v-for="(archivo, i) in mensaje.adjuntos"
             :key="i"
-            :href="archivo.url"
-            target="_blank"
-            rel="noopener"
             class="ce-att-card"
             :title="archivo.nombre"
+            @click="visualizarArchivo(archivo)"
           >
             <div class="ce-att-preview" :class="{ 'ce-att-preview--generic': !isPdf(archivo) }">
               <span class="ce-att-preview-label">{{ isPdf(archivo) ? 'PDF' : 'FILE' }}</span>
@@ -94,9 +92,9 @@
             <div class="ce-att-foot">
               <span class="ce-att-name">{{ archivo.nombre }}</span>
               <span v-if="archivo.tamaño" class="ce-att-meta">{{ archivo.tamaño }}</span>
-              <span class="ce-att-dl"><i class="bi bi-download"></i> Descargar</span>
+              <span class="ce-att-dl"><i class="bi bi-eye"></i> Ver</span>
             </div>
-          </a>
+          </div>
         </div>
       </template>
 
@@ -142,6 +140,16 @@
 
     </div>
   </div>
+
+  <!-- Visor PDF fullscreen -->
+  <VentanaVisorPdf
+    v-if="datosVisor.visible && datosVisor.fileId"
+    :key="`visor-${datosVisor.fileId}`"
+    :file-id="datosVisor.fileId"
+    :pdf-url="datosVisor.pdfUrl"
+    :nombre="datosVisor.nombreArchivo"
+    @close="cerrarVisor"
+  />
 </template>
 
 <script setup>
@@ -152,12 +160,20 @@ import useAuthStore        from '@/stores/auth/authStore'
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
 import { formatDateTimeLima } from '@/core/utils/dateTime'
 import JwtService from '@/core/services/JwtService'
+import VentanaVisorPdf from '@/components/visor/VentanaVisorPdf.vue'
+import { usePdfPopup } from '@/composables/usePdfPopup'
 
 const props = defineProps({
   mensaje  : { type: Object, default: null },
   trayType : { type: String, default: 'entrada' },
 })
 const emit = defineEmits(['cerrar', 'mensaje-cambiado'])
+
+const { datosVisor, abrirPdfEnPopup, cerrarVisor } = usePdfPopup()
+
+function visualizarArchivo(archivo) {
+  abrirPdfEnPopup(archivo)
+}
 
 const designacionStore = useDesignacionStore()
 const authStore        = useAuthStore()

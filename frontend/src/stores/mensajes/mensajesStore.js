@@ -23,7 +23,7 @@ export const useMensajesStore = defineStore('mensajes', {
       destacados : 0,
       archivados : 0,
     },
-    default             : {
+    default : {
       id                 : null,
       prioridad          : 1,
       asunto             : '',
@@ -41,7 +41,7 @@ export const useMensajesStore = defineStore('mensajes', {
 
   getters : {
     // Devuelve cantidad de mensajes cargados en la lista actual.
-    mensajesCount     : (state) => state.mensajes.length,
+    mensajesCount : (state) => state.mensajes.length,
 
     // Indica si existe un mensaje seleccionado en la UI.
     tieneSeleccionado : (state) => !!state.mensajeSeleccionado,
@@ -63,6 +63,7 @@ export const useMensajesStore = defineStore('mensajes', {
         this.mensajes = response.data.data.map(m => ({
           ...m,
           archivos         : [],
+          adjuntos         : [],
           archivosCargados : false,
         }))
         this.pagination = {
@@ -116,6 +117,13 @@ export const useMensajesStore = defineStore('mensajes', {
             .filter(r => r.status === 'fulfilled')
             .map(r => r.value)
 
+          mensaje.adjuntos = mensaje.archivos.map(a => ({
+            url    : a.url_visualizar || a.url,
+            nombre : a.nombre_original || a.nombre_archivo || a.nombre || 'Archivo adjunto',
+            tamaño : a.tamanio ? (Math.round(a.tamanio / 1024) + ' KB') : null,
+            tipo   : a.mime_type || a.tipo
+          }))
+
           mensaje.archivosCargados = true
         })
       )
@@ -130,6 +138,7 @@ export const useMensajesStore = defineStore('mensajes', {
         const nuevo = {
           ...response.data.data,
           archivos         : [],
+          adjuntos         : [],
           archivosCargados : false,
         }
         this.mensajes.push(nuevo)
@@ -183,6 +192,7 @@ export const useMensajesStore = defineStore('mensajes', {
           this.mensajes[index] = {
             ...response.data.data,
             archivos         : this.mensajes[index].archivos,
+            adjuntos         : this.mensajes[index].adjuntos,
             archivosCargados : this.mensajes[index].archivosCargados,
           }
         }
@@ -218,6 +228,7 @@ export const useMensajesStore = defineStore('mensajes', {
       this.mensajes[index] = {
         ...mensajeActualizado,
         archivos         : this.mensajes[index].archivos,
+        adjuntos         : this.mensajes[index].adjuntos,
         archivosCargados : this.mensajes[index].archivosCargados,
       }
     },

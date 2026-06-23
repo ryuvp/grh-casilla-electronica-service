@@ -1,7 +1,10 @@
 <template>
-  <div class="table-container">
-    <div class="table-responsive custom-scrollbar">
-      <table class="table align-middle table-row-dashed fs-6 gy-4">
+  <div class="table-container w-100">
+    <div class="table-responsive custom-scrollbar w-100">
+      <table class="table align-middle table-row-dashed fs-6 gy-4 w-100" style="table-layout: fixed; word-break: break-word;">
+        <colgroup>
+          <col v-for="header in columns" :key="header.columnLabel" :style="getColStyle(header)" />
+        </colgroup>
         <thead class="sticky-thead fs-7">
           <tr class="text-uppercase">
             <th
@@ -29,6 +32,7 @@
         <tbody>
           <tr
             v-for="(item, idx) in items"
+            v-show="!loading"
             :key="item[idField] ?? idx"
             ref="rowRefs"
             :class="getRowClasses(idx)"
@@ -51,48 +55,35 @@
               </td>
             </slot>
           </tr>
+
+          <tr v-if="loading">
+            <td :colspan="columns.length" class="text-center py-5">
+              <div class="d-flex flex-column align-items-center justify-content-center">
+                <div class="fw-bold fs-4 mb-0" style="background: linear-gradient(45deg, #0d6efd, #6f42c1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                  Cargando datos
+                </div>
+                <div class="progress mt-3" style="width: 200px; height: 10px;">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%"></div>
+                </div>
+                <div class="text-muted fs-6 mt-2">Procesando información, por favor espere...</div>
+              </div>
+            </td>
+          </tr>
+
+          <tr v-if="!loading && items.length === 0">
+            <td :colspan="columns.length" class="text-center py-5">
+              <div class="d-flex flex-column align-items-center justify-content-center">
+                <i class="bi bi-inbox fs-1 text-gray-400 mb-2"></i>
+                <div class="fw-bold fs-5 text-gray-600 mb-1">No se encontraron registros</div>
+                <small class="text-gray-500">No hay datos que mostrar en esta vista</small>
+              </div>
+            </td>
+          </tr>
         </tbody>
       </table>
-
-      <!-- Estado de carga -->
-      <div v-if="loading" class="text-center py-5">
-        <div class="d-flex flex-column align-items-center justify-content-center py-5">
-          
-          <!-- Texto principal con degradado -->
-          <div class="text-primary fw-bold fs-4 mb-0" style="background: linear-gradient(45deg, #0d6efd, #6f42c1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-            Cargando datos
-          </div>
-          
-          <!-- Barra de progreso indeterminada -->
-          <div class="progress mt-3" style="width: 200px; height: 10px;">
-            <div
-              class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-              role="progressbar"
-              style="width: 100%"
-            ></div>
-          </div>
-
-          <!-- Texto descriptivo -->
-          <div class="text-muted fs-6">
-            Procesando información, por favor espere...
-          </div>
-        </div>
-      </div>
-
-      <!-- Sin datos (solo cuando no está cargando) -->
-      <div v-else-if="items.length === 0" class="text-center py-5">
-        <div class="d-flex flex-column align-items-center justify-content-center py-4">
-          <div class="mb-3">
-            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-          </div>
-          <div class="text-muted fw-semibold fs-5 mb-2">
-            No se encontraron registros
-          </div>
-        </div>
-      </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center flex-wrap">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 px-2">
       <div class="d-flex align-items-center">
         <span class="text-muted fs-7 fw-semibold me-2">Filas por página:</span>
         <select
@@ -105,7 +96,7 @@
       </div>
 
       <div class="fs-6 fw-semibold text-gray-700">
-        Mostrando {{ pageStart + 1 }} a
+        Mostrando {{ pagination.total === 0 ? 0 : pageStart + 1 }} a
         {{ Math.min(pageStart + pagination.per_page, pagination.total) }}
         de {{ pagination.total }} registros
       </div>
@@ -187,27 +178,34 @@ const getSortIcon = (label) => {
 }
 
 // === ESTILOS DE COLUMNAS ===
-const getColumnStyle = (header) => {
-  if (header?.width) {
-    return {
-      userSelect : 'none',
-      width      : `${header.width}`,
-      minWidth   : `${header.width}`,
-    }
-  }
+const getColStyle = (header) => {
+  if (header?.width) return { width: header.width }
   return {}
+}
+
+const getColumnStyle = (header) => {
+  const style = { userSelect: 'none' }
+  if (header?.width) {
+    style.width    = `${header.width}`
+    style.minWidth = `${header.width}`
+  }
+  if (header?.resizable !== false) {
+    style.resize   = 'horizontal'
+    style.overflow = 'hidden'
+  }
+  return style
 }
 
 // === CLASES PARA FILAS SELECCIONADAS ===
 const getRowClasses = (idx) => {
   if (!props.multiSelect && selectedRowIndex.value === idx) {
-    return { 'table-success': true }
+    return { 'table-active': true }
   }
 
   if (props.multiSelect) {
     const item = props.items[idx]
     const match = props.selectedItems.some(i => i.id === item.id)
-    return { 'table-success': match }
+    return { 'table-active': match }
   }
 
   return {}
@@ -384,4 +382,12 @@ onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
 </script>
 
-
+<style scoped>
+@media (max-width: 768px) {
+  .table-container .d-flex.justify-content-between {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.5rem;
+  }
+}
+</style>

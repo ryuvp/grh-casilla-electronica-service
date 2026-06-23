@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div class="px-6 pt-0 pb-0">
+    <div class="card-body casilla-body pt-0">
       <Lista />
     </div>
 

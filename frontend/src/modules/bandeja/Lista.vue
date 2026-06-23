@@ -3,12 +3,9 @@
 
     <!-- Toolbar -->
     <div class="ce-gmail-toolbar">
+      <span>{{ paginationFrom }}–{{ paginationTo }} de {{ pagination.total }}</span>
       <div class="d-flex align-items-center gap-2">
-        <span><strong>{{ pagination.total }}</strong> mensajes</span>
-        <span v-if="noLeidos > 0" class="ce-unread-badge">{{ noLeidos }} sin leer</span>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <span class="text-muted">Por página:</span>
+        <span>Por página:</span>
         <select class="ce-per-page" @change="$emit('items-per-page-change', +$event.target.value)">
           <option v-for="n in [10,25,50]" :key="n" :value="n" :selected="pagination.per_page==n">{{ n }}</option>
         </select>
@@ -34,11 +31,6 @@
         }"
         @click="selectItem(item)"
       >
-        <!-- Checkbox -->
-        <div class="ce-col-check" @click.stop>
-          <input type="checkbox" />
-        </div>
-
         <!-- Star -->
         <div
           class="ce-col-star"
@@ -49,16 +41,20 @@
           <i :class="item.destacado ? 'bi bi-star-fill' : 'bi bi-star'"></i>
         </div>
 
-        <!-- Sender -->
+        <!-- Remitente -->
         <div class="ce-col-sender" :title="getDeTexto(item)">{{ getDeTexto(item) }}</div>
 
-        <!-- Subject + preview -->
-        <div class="ce-col-content">
+        <!-- Asunto + preview (ocupa el espacio restante) -->
+        <div class="ce-col-subject-wrap">
           <span class="ce-col-subject">{{ item.asunto }}</span>
           <span v-if="previewTexto(item)" class="ce-col-preview"> &mdash; {{ previewTexto(item) }}</span>
-          <span v-if="item.prioridad === 1" class="ce-row-chip ce-row-chip--red ms-1">Alta</span>
-          <span v-else-if="item.prioridad === 2" class="ce-row-chip ce-row-chip--yellow ms-1">Media</span>
-          <span v-if="item.adjuntos?.length" class="ce-row-chip ce-row-chip--clip ms-1">
+        </div>
+
+        <!-- Chips -->
+        <div class="ce-col-chips">
+          <span v-if="item.prioridad === 1" class="ce-row-chip ce-row-chip--red">Alta</span>
+          <span v-else-if="item.prioridad === 2" class="ce-row-chip ce-row-chip--yellow">Media</span>
+          <span v-if="item.adjuntos?.length" class="ce-row-chip ce-row-chip--clip">
             <i class="bi bi-paperclip"></i>
           </span>
         </div>
@@ -100,7 +96,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import useDesignacionStore from '@/stores/designaciones/designacionStore'
-import { formatDateTimeLima } from '@/core/utils/dateTime'
 
 const props = defineProps({
   mensajes   : { type: Array,  required: true },
@@ -113,7 +108,6 @@ const designacionStore   = useDesignacionStore()
 const deTextoByMensajeId = ref({})
 let cargaActual          = 0
 
-const noLeidos   = computed(() => props.mensajes.filter(m => !m.leido).length)
 const totalPages = computed(() => Math.ceil((props.pagination.total || 0) / (props.pagination.per_page || 10)))
 
 const paginationFrom = computed(() => {
@@ -144,7 +138,7 @@ const goToPage    = (page) => {
 const getDeTexto  = (item) => deTextoByMensajeId.value[item.id] || `Casilla ${item.casilla_origen_id}`
 const previewTexto = (item) => {
   if (!item.contenido) return ''
-  return item.contenido.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().substring(0, 80)
+  return item.contenido.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
 const formatDateShort = (d) => {
   if (!d) return ''

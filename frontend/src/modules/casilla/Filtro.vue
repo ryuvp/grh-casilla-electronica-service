@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="ce-filtro">
     <filtro-backend
       :search="search"
       :search-field="searchField"

@@ -1,19 +1,5 @@
 <template>
   <div class="visor-pdf h-100 d-flex flex-column">
-    <!-- Estado de carga -->
-    <div 
-      v-if="loading" 
-      class="loading-container d-flex align-items-center justify-content-center h-100 bg-light"
-    >
-      <div class="text-center text-muted">
-        <div class="spinner-border mb-3" role="status">
-          <span class="visually-hidden">Cargando...</span>
-        </div>
-        <div class="fw-medium mb-1">Cargando documento...</div>
-        <small>Por favor espere mientras se carga el PDF</small>
-      </div>
-    </div>
-
     <!-- Estado de error -->
     <div 
       v-if="error && !loading" 

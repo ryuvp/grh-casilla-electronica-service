@@ -1,16 +1,26 @@
 <template>
-  <div>
-    <Filtro />
-    <BotonesAccion
-      ref="botonesAccionRef"
-      :buttons="botonesAccion"
-      :permissions="authStore.permisosAccion"
-      @ver="abrir"
-      @editar="editar"
-      @agregar="agregar"
-      @eliminar="() => eliminar(store.seleccionados)"
-    />
-    <Lista />
+  <div class="card">
+    <div class="card-header border-0 py-3 gap-3">
+      <div class="flex-grow-1">
+        <Filtro />
+      </div>
+      <div class="d-flex align-items-center flex-shrink-0">
+        <BotonesAccion
+          ref="botonesAccionRef"
+          :buttons="botonesAccion"
+          :permissions="authStore.permisosAccion"
+          @ver="abrir"
+          @editar="editar"
+          @agregar="agregar"
+          @eliminar="() => eliminar(store.seleccionados)"
+        />
+      </div>
+    </div>
+
+    <div class="card-body casilla-body pt-0">
+      <Lista />
+    </div>
+
     <Formulario
       ref="formularioRef"
       :item="item"
@@ -40,8 +50,9 @@ import useCasillaStore from '@/stores/casillas/casillasPaginadoStore.js'
 const store = useCasillaStore();
 const authStore = useAuthStore();
 
-// Referencia al formulario modal para alta/edicion.
+// Referencia al formulario modal para alta/edicion y detalle.
 const formularioRef = useTemplateRef('formularioRef')
+const verRef = useTemplateRef('verRef')
 
 // Item activo usado en formularios y modal de detalle.
 const item = ref({ ...store.default })
@@ -110,8 +121,14 @@ function editar() {
   formularioRef.value.abrir()
 }
 
+// Abre modal de detalle.
+function abrir() {
+  verRef.value.abrir()
+}
+
 // Solicita confirmacion y ejecuta eliminacion logica de casilla.
-function eliminar(rowItem) {
+function eliminar(items) {
+  const rowItem = Array.isArray(items) ? items[0] : items;
   if (!rowItem || !rowItem.id) return
 
   Swal.fire({

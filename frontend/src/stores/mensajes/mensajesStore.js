@@ -23,7 +23,7 @@ export const useMensajesStore = defineStore('mensajes', {
       destacados : 0,
       archivados : 0,
     },
-    default             : {
+    default : {
       id                 : null,
       prioridad          : 1,
       asunto             : '',
@@ -41,7 +41,7 @@ export const useMensajesStore = defineStore('mensajes', {
 
   getters : {
     // Devuelve cantidad de mensajes cargados en la lista actual.
-    mensajesCount     : (state) => state.mensajes.length,
+    mensajesCount : (state) => state.mensajes.length,
 
     // Indica si existe un mensaje seleccionado en la UI.
     tieneSeleccionado : (state) => !!state.mensajeSeleccionado,
@@ -63,6 +63,7 @@ export const useMensajesStore = defineStore('mensajes', {
         this.mensajes = response.data.data.map(m => ({
           ...m,
           archivos         : [],
+          adjuntos         : [],
           archivosCargados : false,
         }))
         this.pagination = {
@@ -86,39 +87,62 @@ export const useMensajesStore = defineStore('mensajes', {
 
     async fetchCounts() {
       const trays = ['entrada', 'enviados', 'destacados', 'archivados']
-      const responses = await Promise.allSettled(
-        trays.map((tray) => Apiservice.get(`/mensajes/${tray}`, { per_page: 1, page: 1 }))
-      )
-
-      responses.forEach((result, index) => {
-        const tray = trays[index]
-        if (result.status === 'fulfilled') {
-          this.counts[tray] = Number(result.value?.data?.meta?.total || 0)
+      
+      // Realizar peticiones de forma secuencial para evitar sobrecargar 
+      // y crashear el servidor de desarrollo local (php artisan serve)
+      for (const tray of trays) {
+        try {
+          const response = await Apiservice.get(`/mensajes/${tray}`, { per_page: 1, page: 1 })
+          this.counts[tray] = Number(response?.data?.meta?.total || 0)
+        } catch (error) {
+          console.error(`Error al obtener contador de la bandeja ${tray}:`, error)
         }
-      })
+      }
     },
 
     // Carga metadatos/urls de archivos para mensajes que tienen archivo_ids.
     async cargarArchivosDeMensajes() {
       const fileStore = useFileStore()
 
-      // Resuelve archivos por mensaje sin detener todo el flujo ante fallas parciales.
-      await Promise.allSettled(
-        this.mensajes.map(async (mensaje) => {
+      // Recopilar todos los IDs de archivos únicos que faltan por cargar
+      const todosLosIds = new Set()
+      this.mensajes.forEach(mensaje => {
+        if (!mensaje.archivosCargados && mensaje.archivo_ids?.length) {
+          mensaje.archivo_ids.forEach(id => todosLosIds.add(id))
+        }
+      })
+
+      if (todosLosIds.size === 0) return
+
+      try {
+        // Pedir todos los archivos en una sola peticion batch
+        const archivosObtenidos = await fileStore.mostrarArchivosBatch(Array.from(todosLosIds))
+        
+        // Crear diccionario para busqueda rapida
+        const diccionarioArchivos = {}
+        archivosObtenidos.forEach(a => { diccionarioArchivos[a.id] = a })
+
+        // Asignar los archivos a cada mensaje
+        this.mensajes.forEach(mensaje => {
           if (mensaje.archivosCargados || !mensaje.archivo_ids?.length) return
 
-          // Intenta resolver cada archivo y conserva solo resultados exitosos.
-          const archivos = await Promise.allSettled(
-            mensaje.archivo_ids.map(id => fileStore.mostrarArchivo(id))
-          )
+          mensaje.archivos = mensaje.archivo_ids
+            .map(id => diccionarioArchivos[id])
+            .filter(a => !!a) // Filtrar los que no se encontraron
 
-          mensaje.archivos = archivos
-            .filter(r => r.status === 'fulfilled')
-            .map(r => r.value)
+          mensaje.adjuntos = mensaje.archivos.map(a => ({
+            id     : a.id,
+            url    : a.url_visualizar || a.url || `${import.meta.env.VITE_API_FILE}/visualizar/${a.id}`,
+            nombre : a.nombre_original || a.nombre_archivo || a.nombre || 'Archivo adjunto',
+            tamaño : a.tamanio ? (Math.round(a.tamanio / 1024) + ' KB') : null,
+            tipo   : a.mime_type || a.tipo,
+          }))
 
           mensaje.archivosCargados = true
         })
-      )
+      } catch (error) {
+        console.error('Error al cargar archivos en lote:', error)
+      }
     },
 
     // Crea un nuevo mensaje y lo sincroniza en la lista local.
@@ -130,6 +154,7 @@ export const useMensajesStore = defineStore('mensajes', {
         const nuevo = {
           ...response.data.data,
           archivos         : [],
+          adjuntos         : [],
           archivosCargados : false,
         }
         this.mensajes.push(nuevo)
@@ -183,6 +208,7 @@ export const useMensajesStore = defineStore('mensajes', {
           this.mensajes[index] = {
             ...response.data.data,
             archivos         : this.mensajes[index].archivos,
+            adjuntos         : this.mensajes[index].adjuntos,
             archivosCargados : this.mensajes[index].archivosCargados,
           }
         }
@@ -218,6 +244,7 @@ export const useMensajesStore = defineStore('mensajes', {
       this.mensajes[index] = {
         ...mensajeActualizado,
         archivos         : this.mensajes[index].archivos,
+        adjuntos         : this.mensajes[index].adjuntos,
         archivosCargados : this.mensajes[index].archivosCargados,
       }
     },

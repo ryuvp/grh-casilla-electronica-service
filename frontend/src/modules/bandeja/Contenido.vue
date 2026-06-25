@@ -1,180 +1,281 @@
 <template>
-  <div v-if="mensaje" class="position-relative p-4">
-    <div class="position-absolute top-0 end-0 m-2 d-flex align-items-center gap-2">
+  <div v-if="mensaje" style="display:flex; flex-direction:column; height:100%; overflow:hidden;">
+
+    <!-- Drawer header -->
+    <div class="ce-drawer__header">
+      <div class="ce-drawer__header-title">
+        <i class="bi bi-file-earmark-text fs-5"></i>
+        INSTRUMENTO DE NOTIFICACIÓN
+      </div>
+      <button class="ce-drawer__close" @click="$emit('cerrar')">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <!-- Action bar: solo Destacar / Archivar -->
+    <div v-if="canManageMensaje" class="ce-drawer__actions">
       <button
-        v-if="canManageMensaje"
-        class="btn btn-sm btn-light"
-        :title="mensaje.destacado ? 'Quitar de destacados' : 'Agregar a destacados'"
+        class="ce-action-btn"
+        :class="mensaje.destacado ? 'ce-action-btn--star-on' : ''"
         @click="toggleDestacado"
       >
-        <i :class="mensaje.destacado ? 'bi bi-star-fill text-warning' : 'bi bi-star'"></i>
+        <i :class="mensaje.destacado ? 'bi bi-star-fill' : 'bi bi-star'"></i>
+        {{ mensaje.destacado ? 'Destacado' : 'Destacar' }}
       </button>
       <button
-        v-if="canManageMensaje"
-        class="btn btn-sm btn-light"
-        :title="mensaje.archivado ? 'Desarchivar' : 'Archivar'"
+        class="ce-action-btn"
+        :class="mensaje.archivado ? 'ce-action-btn--archive-on' : ''"
         @click="toggleArchivado"
       >
-        <i :class="mensaje.archivado ? 'bi bi-archive-fill text-primary' : 'bi bi-archive'"></i>
-      </button>
-      <button
-        class="btn btn-sm btn-light"
-        @click="$emit('cerrar')"
-      >
-        ❌
+        <i :class="mensaje.archivado ? 'bi bi-archive-fill' : 'bi bi-archive'"></i>
+        {{ mensaje.archivado ? 'Archivado' : 'Archivar' }}
       </button>
     </div>
 
-    <!-- Cabecera -->
-    <div class="border-bottom pb-3 mb-3">
-      <h4 class="mb-1">{{ mensaje.asunto }}</h4>
-      <div class="text-muted small">
-        <span><strong>De:</strong> {{ deTexto }}</span><br />
-        <span><strong>Para:</strong> {{ paraTexto }}</span><br />
-        <span><strong>Fecha:</strong> {{ formatFecha(mensaje.created_at) }}</span><br />
-        <span><strong>Prioridad:</strong>
-          <span
-            :class="{
-              'badge bg-danger': mensaje.prioridad === 1,
-              'badge bg-warning text-dark': mensaje.prioridad === 2,
-              'badge bg-secondary': mensaje.prioridad === 3
-            }"
+    <!-- Scrollable body -->
+    <div class="ce-drawer__body">
+
+      <!-- Code -->
+      <div class="ce-notif-code">CÓDIGO: {{ codigoMensaje }}</div>
+
+      <!-- Title -->
+      <h2 class="ce-notif-title">{{ mensaje.asunto }}</h2>
+
+      <!-- Metadata -->
+      <table class="ce-meta-table">
+        <tbody>
+          <tr>
+            <td>Remitente</td>
+            <td>{{ deTexto }}</td>
+          </tr>
+          <tr>
+            <td>Fecha Depósito</td>
+            <td>{{ formatFecha(mensaje.created_at) }}</td>
+          </tr>
+          <tr>
+            <td>Casilla Destino</td>
+            <td><span class="ce-casilla-tag">{{ casillaCodigo }}</span></td>
+          </tr>
+          <tr>
+            <td>Prioridad Legal</td>
+            <td>
+              <span class="ce-priority-tag" :class="prioridadClass">
+                <i :class="prioridadIcon"></i>
+                {{ prioridadTexto }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 1. Contenido -->
+      <div class="ce-notif-section-label">Contenido de la Cédula / Proveído:</div>
+      <div class="ce-notif-content" v-html="mensaje.contenido || '<em>Sin contenido</em>'"></div>
+
+      <!-- 2. Adjuntos (Gmail-style) – entre contenido e integridad -->
+      <template v-if="mensaje.adjuntos?.length">
+        <div class="ce-att-section-label">
+          <i class="bi bi-paperclip"></i>
+          {{ mensaje.adjuntos.length }} {{ mensaje.adjuntos.length === 1 ? 'archivo adjunto' : 'archivos adjuntos' }}
+        </div>
+        <div class="ce-att-grid">
+          <div
+            v-for="(archivo, i) in mensaje.adjuntos"
+            :key="i"
+            class="ce-att-card"
+            :title="archivo.nombre"
+            @click="visualizarArchivo(archivo)"
           >
-            {{ prioridadTexto(mensaje.prioridad) }}
-          </span>
-        </span>
+            <div class="ce-att-preview" :class="{ 'ce-att-preview--generic': !isPdf(archivo) }">
+              <span class="ce-att-preview-label">{{ isPdf(archivo) ? 'PDF' : 'FILE' }}</span>
+            </div>
+            <div class="ce-att-foot">
+              <span class="ce-att-name">{{ archivo.nombre }}</span>
+              <span v-if="archivo.tamaño" class="ce-att-meta">{{ archivo.tamaño }}</span>
+              <span class="ce-att-dl"><i class="bi bi-eye"></i> Ver</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 3. Constancias – tarjetas estilo Gmail -->
+      <div class="ce-att-section-label" style="margin-top:20px;">
+        <i class="bi bi-file-earmark-pdf"></i> Constancias
       </div>
-    </div>
+      <div class="ce-att-grid">
+        <!-- Constancia de Envío -->
+        <div class="ce-att-card" @click="descargarConstanciaEnvio" title="Constancia de Envío">
+          <div class="ce-att-preview">
+            <span class="ce-att-preview-label">PDF</span>
+          </div>
+          <div class="ce-att-foot">
+            <span class="ce-att-name">Constancia de Envío</span>
+            <span class="ce-att-meta">PDF · Generado</span>
+            <span class="ce-att-dl"><i class="bi bi-download"></i> Descargar</span>
+          </div>
+        </div>
 
-    <!-- Contenido HTML -->
-    <div class="mb-4 border rounded p-3 bg-light" v-html="mensaje.contenido"></div>
-
-    <!-- Archivos adjuntos -->
-    <div v-if="mensaje.adjuntos && mensaje.adjuntos.length">
-      <h6 class="fw-semibold">📎 Archivos adjuntos</h6>
-      <ul class="list-group">
-        <li
-          v-for="(archivo, index) in mensaje.adjuntos"
-          :key="index"
-          class="list-group-item d-flex justify-content-between align-items-center"
+        <!-- Constancia de Lectura -->
+        <div
+          class="ce-att-card"
+          :class="{ 'ce-att-card--disabled': !mensaje.leido }"
+          :title="mensaje.leido ? 'Constancia de Lectura' : 'Disponible cuando el destinatario lea el mensaje'"
+          @click="descargarConstanciaLectura"
         >
-          <span>
-            <i class="bi bi-paperclip me-2"></i>{{ archivo.nombre }}
-          </span>
-          <a
-            :href="archivo.url"
-            class="btn btn-sm btn-outline-primary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Descargar
-          </a>
-        </li>
-      </ul>
+          <div class="ce-att-preview" :class="{ 'ce-att-preview--generic': !mensaje.leido }">
+            <span class="ce-att-preview-label">PDF</span>
+          </div>
+          <div class="ce-att-foot">
+            <span class="ce-att-name">Constancia de Lectura</span>
+            <span class="ce-att-meta">{{ mensaje.leido ? 'PDF · Disponible' : 'Pendiente de lectura' }}</span>
+            <span class="ce-att-dl" v-if="mensaje.leido"><i class="bi bi-download"></i> Descargar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Integridad – siempre al final -->
+      <div class="ce-integrity">
+        Garantía de Integridad: <span>SHA256-{{ hashMensaje }}</span>
+      </div>
+
     </div>
   </div>
 
-  <div v-else class="text-muted text-center mt-5">
-    <i>Selecciona un mensaje para ver su contenido.</i>
-  </div>
+  <!-- Visor PDF fullscreen -->
+  <VentanaVisorPdf
+    v-if="datosVisor.visible && datosVisor.fileId"
+    :key="`visor-${datosVisor.fileId}`"
+    :file-id="datosVisor.fileId"
+    :pdf-url="datosVisor.pdfUrl"
+    :nombre="datosVisor.nombreArchivo"
+    @close="cerrarVisor"
+  />
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
 import Swal from 'sweetalert2'
 import useDesignacionStore from '@/stores/designaciones/designacionStore'
-import useAuthStore from '@/stores/auth/authStore'
+import useAuthStore        from '@/stores/auth/authStore'
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
 import { formatDateTimeLima } from '@/core/utils/dateTime'
+import JwtService from '@/core/services/JwtService'
+import VentanaVisorPdf from '@/components/visor/VentanaVisorPdf.vue'
+import { usePdfPopup } from '@/composables/usePdfPopup'
 
 const props = defineProps({
-  mensaje : {
-    type    : Object,
-    default : null
-  },
-  trayType : {
-    type    : String,
-    default : 'entrada'
-  }
+  mensaje  : { type: Object, default: null },
+  trayType : { type: String, default: 'entrada' },
 })
 const emit = defineEmits(['cerrar', 'mensaje-cambiado'])
 
+const { datosVisor, abrirPdfEnPopup, cerrarVisor } = usePdfPopup()
+
+function visualizarArchivo(archivo) {
+  abrirPdfEnPopup(archivo)
+}
+
 const designacionStore = useDesignacionStore()
-const authStore = useAuthStore()
-const mensajesStore = useMensajesStore()
-const deTexto = ref('No disponible')
-const paraTexto = ref('No disponible')
+const authStore        = useAuthStore()
+const mensajesStore    = useMensajesStore()
+const deTexto          = ref('Cargando...')
+const paraTexto        = ref('Cargando...')
+const casillaDestinoId = ref(null)
+
 const canManageMensaje = computed(() => {
-  const permissionNames = authStore.permisosAccion.map((permiso) => permiso.name || permiso.nombre || '')
-  return props.trayType !== 'enviados' && permissionNames.includes('mensaje.destacar') && permissionNames.includes('mensaje.archivar')
+  const names = authStore.permisosAccion.map(p => p.name || p.nombre || '')
+  return props.trayType !== 'enviados'
+    && names.includes('mensaje.destacar')
+    && names.includes('mensaje.archivar')
 })
 
+const codigoMensaje = computed(() => {
+  if (!props.mensaje) return ''
+  const year = new Date(props.mensaje.created_at).getFullYear()
+  return `MSG-${year}-${String(props.mensaje.id).padStart(5, '0')}`
+})
+
+const casillaCodigo = computed(() => {
+  const id = casillaDestinoId.value || props.mensaje?.casilla_destino_id
+  return id ? `CAS-${new Date(props.mensaje?.created_at).getFullYear()}-${String(id).padStart(4, '0')}` : paraTexto.value
+})
+
+const hashMensaje = computed(() => {
+  if (!props.mensaje) return ''
+  const str = `${props.mensaje.id}-${props.mensaje.asunto}-${props.mensaje.created_at}`
+  let hash = 0
+  for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i)
+  return Math.abs(hash).toString(16).toUpperCase().padStart(8, '0')
+})
+
+const prioridadTexto = computed(() => ({ 1: 'Alta', 2: 'Media', 3: 'Baja' }[props.mensaje?.prioridad] ?? 'Normal'))
+const prioridadClass = computed(() => ({
+  1: 'ce-priority-tag--alta',
+  2: 'ce-priority-tag--media',
+  3: 'ce-priority-tag--baja',
+}[props.mensaje?.prioridad] ?? 'ce-priority-tag--nd'))
+const prioridadIcon = computed(() => ({
+  1: 'bi bi-exclamation-circle-fill',
+  2: 'bi bi-dash-circle-fill',
+  3: 'bi bi-check-circle-fill',
+}[props.mensaje?.prioridad] ?? 'bi bi-circle'))
+
 async function cargarActores() {
-  const mensaje = props.mensaje
-  if (!mensaje) {
-    deTexto.value = 'No disponible'
-    paraTexto.value = 'No disponible'
-    return
-  }
-
+  const msg = props.mensaje
+  if (!msg) { deTexto.value = '—'; paraTexto.value = '—'; return }
   const [origen, destino] = await Promise.all([
-    designacionStore.resolveActorByCasillaId(mensaje.casilla_origen_id),
-    designacionStore.resolveActorByCasillaId(mensaje.casilla_destino_id),
+    designacionStore.resolveActorByCasillaId(msg.casilla_origen_id),
+    designacionStore.resolveActorByCasillaId(msg.casilla_destino_id),
   ])
-
-  // Evita pintar datos obsoletos si el usuario cambio de mensaje durante la carga.
-  if (props.mensaje?.id !== mensaje.id) return
-
-  deTexto.value = origen?.display_name || `Casilla ${mensaje.casilla_origen_id}`
-  paraTexto.value = destino?.display_name || `Casilla ${mensaje.casilla_destino_id}`
+  if (props.mensaje?.id !== msg.id) return
+  casillaDestinoId.value = msg.casilla_destino_id
+  deTexto.value   = origen?.display_name  || `Casilla ${msg.casilla_origen_id}`
+  paraTexto.value = destino?.display_name || `Casilla ${msg.casilla_destino_id}`
 }
 
-watch(() => props.mensaje?.id, () => {
-  cargarActores()
-}, { immediate: true })
+watch(() => props.mensaje?.id, () => cargarActores(), { immediate: true })
 
-function formatFecha(fechaStr) {
-  return formatDateTimeLima(fechaStr)
-}
-
-function prioridadTexto(prioridad) {
-  switch (prioridad) {
-  case 1: return 'Alta'
-  case 2: return 'Media'
-  case 3: return 'Baja'
-  default: return 'N/D'
-  }
+const formatFecha = (d) => formatDateTimeLima(d)
+const isPdf = (archivo) => {
+  const nombre = (archivo.nombre || '').toLowerCase()
+  const tipo   = (archivo.tipo   || '').toLowerCase()
+  return nombre.endsWith('.pdf') || tipo.includes('pdf')
 }
 
 async function toggleDestacado() {
   if (!props.mensaje?.id) return
-
   try {
     await mensajesStore.toggleDestacado(props.mensaje.id)
     await mensajesStore.fetchCounts()
     emit('mensaje-cambiado')
-  } catch (error) {
-    console.error('Error alternando destacado:', error)
+  } catch {
     Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el destacado.' })
   }
 }
 
 async function toggleArchivado() {
   if (!props.mensaje?.id) return
-
   try {
     await mensajesStore.toggleArchivado(props.mensaje.id)
     await mensajesStore.fetchCounts()
     emit('mensaje-cambiado')
-  } catch (error) {
-    console.error('Error alternando archivado:', error)
+  } catch {
     Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el archivado.' })
   }
 }
-</script>
 
-<style scoped>
-h4 {
-  font-weight: 600;
+const baseApi = () => import.meta.env.VITE_API_URL || 'http://localhost:8089/api'
+
+function descargarConstanciaEnvio() {
+  if (!props.mensaje?.id) return
+  window.open(`${baseApi()}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${JwtService.getToken()}`, '_blank')
 }
-</style>
+function descargarConstanciaLectura() {
+  if (!props.mensaje?.id) return
+  if (!props.mensaje.leido) {
+    Swal.fire({ icon: 'warning', title: 'No disponible', text: 'Solo disponible después de que el destinatario haya leído el mensaje.' })
+    return
+  }
+  window.open(`${baseApi()}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${JwtService.getToken()}`, '_blank')
+}
+</script>

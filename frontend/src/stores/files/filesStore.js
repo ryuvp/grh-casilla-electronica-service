@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import createApiService from "@/core/services/ApiService"
 
-const ApiFileService = createApiService(import.meta.env.VITE_API_FILE || "http://localhost:8085/api/files")
+const ApiFileService = createApiService(import.meta.env.VITE_API_FILE)
 
 export const useFileStore = defineStore('fileStore', {
   state : () => ({
@@ -59,6 +59,19 @@ export const useFileStore = defineStore('fileStore', {
       }
     },
 
+    async mostrarArchivosBatch(ids) {
+      if (!ids || ids.length === 0) return []
+      try {
+        // Enviar array de IDs como ids[]=1&ids[]=2...
+        const queryParams = ids.map(id => `ids[]=${encodeURIComponent(id)}`).join('&')
+        const data = await ApiFileService.get(`/info?${queryParams}`)
+        return data.data?.archivos || []
+      } catch (error) {
+        console.error('Error al obtener archivos por lote:', error)
+        throw error
+      }
+    },
+
     async descargarArchivo(id) {
       try {
         const response = await ApiFileService.download(`/download/${id}`)
@@ -74,6 +87,16 @@ export const useFileStore = defineStore('fileStore', {
         window.URL.revokeObjectURL(url)
       } catch (error) {
         console.error(`Error al descargar archivo ${id}:`, error)
+        throw error
+      }
+    },
+
+    async validarFirma(id) {
+      try {
+        const data = await ApiFileService.get(`/validar/${id}`)
+        return data.data?.data || data.data
+      } catch (error) {
+        console.error(`Error al validar firma archivo ${id}:`, error)
         throw error
       }
     },

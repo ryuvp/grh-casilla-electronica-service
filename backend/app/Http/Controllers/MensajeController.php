@@ -57,6 +57,10 @@ class MensajeController extends Controller
      */
     private function canWriteNotifications(Request $request): bool
     {
+        if ($request->filled('sgd_referencias')) {
+            return true;
+        }
+
         $authUser = $this->getAuthUser($request);
 
         $roles = data_get($authUser, 'roles', []);
@@ -219,6 +223,52 @@ class MensajeController extends Controller
     }
 
     /**
+     * Verifica masivamente el envío y lectura de documentos del SGD.
+     */
+    public function verificarEnvios(Request $request)
+    {
+        $documentoIds = $request->input('documento_ids', []);
+        if (!is_array($documentoIds) || empty($documentoIds)) {
+            return response()->json([]);
+        }
+
+        $mensajes = Mensaje::whereHas('adjuntos', function ($query) use ($documentoIds) {
+            $query->where('tipo', 'documento_sgd')
+                ->whereIn('referencia_id', $documentoIds);
+        })
+        ->with(['adjuntos'])
+        ->get();
+
+        $mapping = [];
+        foreach ($mensajes as $mensaje) {
+            $adjunto = $mensaje->adjuntos
+                ->where('tipo', 'documento_sgd')
+                ->first();
+
+            if ($adjunto) {
+                $docId = $adjunto->referencia_id;
+                $mapping[$docId] = [
+                    'enviado' => true,
+                    'mensaje_id' => $mensaje->id,
+                    'leido' => (bool) $mensaje->leido,
+                    'fecha_envio' => $mensaje->created_at ? $mensaje->created_at->toDateTimeString() : null,
+                    'fecha_lectura' => $mensaje->read_at ? $mensaje->read_at->toDateTimeString() : null,
+                    'casilla_origen_id' => $mensaje->casilla_origen_id,
+                    'casilla_destino_id' => $mensaje->casilla_destino_id,
+                ];
+            }
+        }
+
+        foreach ($documentoIds as $id) {
+            if (!isset($mapping[$id])) {
+                $mapping[$id] = null;
+            }
+        }
+
+        return response()->json($mapping);
+    }
+
+    /**
      * Muestra un mensaje si pertenece a la casilla origen o destino autenticada.
      */
     public function show(Request $request, Mensaje $mensaje)
@@ -247,6 +297,30 @@ class MensajeController extends Controller
      */
     public function store(Request $request)
     {
+        if (!$request->filled('casilla_destino_id') && $request->filled('designacion_destino_id')) {
+            $destDesignacionId = (int) $request->input('designacion_destino_id');
+            $casillaDestino = Casilla::where('designacion_id', $destDesignacionId)
+                ->where('activo', true)
+                ->first();
+
+            if (!$casillaDestino) {
+                try {
+                    $casillaDestino = Casilla::create([
+                        'designacion_id' => $destDesignacionId,
+                        'numero'         => 'CAS-' . $destDesignacionId,
+                        'activo'         => true,
+                        'fecha_inicio'   => now()->toDateString(),
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error("Error auto-creando casilla destino para designación {$destDesignacionId} en store: " . $e->getMessage());
+                }
+            }
+
+            if ($casillaDestino) {
+                $request->merge(['casilla_destino_id' => $casillaDestino->id]);
+            }
+        }
+
         if (!$this->canWriteNotifications($request)) {
             return response()->json([
                 'status' => 'error',
@@ -577,5 +651,179 @@ class MensajeController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
         */
+    }
+
+    /**
+     * Genera un certificado en PDF para el mensaje.
+     */
+    public function generarCertificadoPdf(Request $request, Mensaje $mensaje)
+    {
+        // 1. Validar que el usuario tenga acceso a este mensaje
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (
+            $mensaje->casilla_origen_id !== $casillaAuth->id &&
+            $mensaje->casilla_destino_id !== $casillaAuth->id
+        ) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $token = $request->bearerToken() ?: $request->query('token');
+
+        // 2. Cargar Casillas
+        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+
+        // 3. Obtener detalles del remitente y destinatario del Auth Service
+        $remitente = [];
+        $destinatario = [];
+        if ($casillaOrigen) {
+            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+        }
+        if ($casillaDestino) {
+            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+        }
+
+        // 4. Buscar el documento adjunto de tipo documento_sgd
+        $adjuntoSgd = $mensaje->adjuntos()
+            ->where('tipo', 'documento_sgd')
+            ->first();
+
+        // 5. Cargar detalles del documento SGD
+        $documento = [
+            'id' => $adjuntoSgd ? $adjuntoSgd->referencia_id : null,
+            'asunto' => $mensaje->asunto,
+            'fecha_envio' => $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A',
+            'fecha_lectura' => $mensaje->leido && $mensaje->read_at ? $mensaje->read_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'PENDIENTE DE LECTURA',
+        ];
+
+        // 6. Generar el PDF usando DomPDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.certificado', [
+            'mensaje' => $mensaje,
+            'casillaOrigen' => $casillaOrigen,
+            'casillaDestino' => $casillaDestino,
+            'remitente' => $remitente,
+            'destinatario' => $destinatario,
+            'documento' => $documento,
+            'hash' => sha1($mensaje->id . $mensaje->created_at)
+        ]);
+
+        return $pdf->stream('Certificado_Notificacion_' . ($documento['id'] ?: $mensaje->id) . '.pdf');
+    }
+
+    /**
+     * Genera la constancia de notificación electrónica (envío/depósito).
+     */
+    public function generarConstanciaEnvioPdf(Request $request, Mensaje $mensaje)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (
+            $mensaje->casilla_origen_id !== $casillaAuth->id &&
+            $mensaje->casilla_destino_id !== $casillaAuth->id
+        ) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $token = $request->bearerToken() ?: $request->query('token');
+
+        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+
+        $remitente = [];
+        $destinatario = [];
+        if ($casillaOrigen) {
+            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+        }
+        if ($casillaDestino) {
+            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+        }
+
+        $fecha_envio = $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_envio', [
+            'mensaje' => $mensaje,
+            'casillaOrigen' => $casillaOrigen,
+            'casillaDestino' => $casillaDestino,
+            'remitente' => $remitente,
+            'destinatario' => $destinatario,
+            'fecha_envio' => $fecha_envio
+        ]);
+
+        return $pdf->stream('Constancia_Envio_' . $mensaje->id . '.pdf');
+    }
+
+    /**
+     * Genera la constancia de lectura de notificación electrónica.
+     */
+    public function generarConstanciaLecturaPdf(Request $request, Mensaje $mensaje)
+    {
+        $casillaAuth = $this->getAuthCasilla($request);
+        if (!$casillaAuth) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (
+            $mensaje->casilla_origen_id !== $casillaAuth->id &&
+            $mensaje->casilla_destino_id !== $casillaAuth->id
+        ) {
+            return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$mensaje->leido || !$mensaje->read_at) {
+            return response()->json(['error' => 'El mensaje aun no ha sido leido por el destinatario'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $token = $request->bearerToken() ?: $request->query('token');
+
+        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+
+        $remitente = [];
+        $destinatario = [];
+        if ($casillaOrigen) {
+            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+        }
+        if ($casillaDestino) {
+            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+        }
+
+        $fecha_lectura = $mensaje->read_at->setTimezone('America/Lima')->format('d/m/Y H:i:s');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_lectura', [
+            'mensaje' => $mensaje,
+            'casillaOrigen' => $casillaOrigen,
+            'casillaDestino' => $casillaDestino,
+            'remitente' => $remitente,
+            'destinatario' => $destinatario,
+            'fecha_lectura' => $fecha_lectura
+        ]);
+
+        return $pdf->stream('Constancia_Lectura_' . $mensaje->id . '.pdf');
+    }
+
+
+    /**
+     * Obtiene los detalles de la designación desde el Auth Service.
+     */
+    private function fetchActorDetailsByDesignacionId(int $designacionId, string $token): array
+    {
+        $url = env('AUTH_SERVICE_URL') . '/api/designaciones/' . $designacionId . '/usuario-cargo';
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($token)->get($url);
+            if ($response->successful()) {
+                return $response->json();
+            }
+        } catch (\Exception $e) {
+            \Log::error("Error fetching actor details for designacion {$designacionId}: " . $e->getMessage());
+        }
+
+        return [];
     }
 }

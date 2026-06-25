@@ -39,6 +39,8 @@ export default function createModelStore (model, state = {}, getters = {}, actio
       selectedStatus      : false,
       timeOutAsinc        : null,
       check               : check,
+      filters             : {},
+      orders              : [],
       ...state
     },
     getters : {
@@ -131,26 +133,61 @@ export default function createModelStore (model, state = {}, getters = {}, actio
       },
       // Action para obtener la lista de objetos de el servidor
       async get (params = {}, pagination={}) {
-      //var commit = store.commit
         const action = this.syncStatus ? 'sync' : 'setItems';
         
-        if (model.paginate) {
-          params = {...params, ...Object.assign({
-            page : this.pagination.current_page, per_page : this.pagination.per_page
-          }, pagination) };
+        const isPagination = Object.keys(pagination).length > 0 || (params && ('page' in params || 'per_page' in params));
+        const isSorting = params && 'orders' in params;
+        const hasNewFilters = params && Object.keys(params).some(k => k !== 'orders' && k !== 'page' && k !== 'per_page');
+        const isEmptyParams = params && Object.keys(params).length === 0;
+
+        // Guardar filtros si se aplican explícitamente (evitando sobreescribir al ordenar o paginar)
+        if (arguments.length > 0 && (hasNewFilters || (isEmptyParams && !isPagination && !isSorting))) {
+          const newFilters = { ...params };
+          delete newFilters.orders;
+          delete newFilters.page;
+          delete newFilters.per_page;
+          this.filters = newFilters;
+          this.pagination.current_page = 1;
         }
-        if (!(await model.saved(params))) {
+
+        if (isSorting) {
+          this.orders = params.orders;
+        }
+
+        if (isPagination) {
+          if (pagination.page) this.pagination.current_page = pagination.page;
+          if (pagination.per_page) this.pagination.per_page = pagination.per_page;
+        }
+
+        // Reconstruir parámetros unificados de consulta
+        let queryParams = {
+          ...this.filters
+        };
+
+        if (this.orders && this.orders.length > 0) {
+          queryParams.orders = this.orders;
+        }
+
+        if (this.paginate) {
+          const paginationDefaults = {
+            page     : this.pagination.current_page,
+            per_page : this.pagination.per_page
+          };
+          queryParams = { ...queryParams, ...paginationDefaults };
+        }
+
+        if (!(await model.saved(queryParams))) {
           return new Promise((resolve, reject) => {
-            console.log('get', params)
-            model.getAll(params).then(response => {
+            model.getAll(queryParams).then(response => {
               const data = response.data;
               model.save(data.data);
               this[action](data.data);
-              // eslint-disable-next-line no-unused-vars
-              const { data: _, ...pagination } = data;
-              this.pagination = Object.assign(this.pagination, pagination);
+              if (this.paginate) {
+                // eslint-disable-next-line no-unused-vars
+                const { data: _, ...paginationResponse } = data;
+                this.pagination = Object.assign(this.pagination, paginationResponse);
+              }
               this.afterGet();
-              console.log('get', this)
               resolve(response);
             }).catch(reject);
           })

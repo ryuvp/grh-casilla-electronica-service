@@ -242,63 +242,99 @@ const useAuthStore = defineStore('auth', {
       if (this.casillaChecked) {
         return true;
       }
-
-      const designacionId = this.userData?.designacion_logeada?.id
-        || this.userData?.designacion_logeada_id
-        || this.userData?.designacion_id
-        || this.userData?.designaciones_activas?.[0]?.id
-        || this.userData?.designaciones?.[0]?.id;
-
-      if (!designacionId) {
-        console.warn("Sin designacion activa valida.");
-        this.hasCasilla = false;
-        this.casillaChecked = true;
-        return true;
+      if (this.casillaRequest) {
+        return await this.casillaRequest;
       }
 
-      try {
-        // Consulta minima: solo verifica existencia con una pagina de 1 elemento.
-        const response = await ApiCasillaService.get('/casillas', {
-          designacion_id : designacionId,
-          per_page       : 1,
-          page           : 1,
-        });
+      this.casillaRequest = (async () => {
+        const designacionId = this.userData?.designacion_logeada?.id
+          || this.userData?.designacion_logeada_id
+          || this.userData?.designacion_id
+          || this.userData?.designaciones_activas?.[0]?.id
+          || this.userData?.designaciones?.[0]?.id;
 
-        const casillas = response?.data?.data || [];
-        const existeCasilla = Array.isArray(casillas) && casillas.length > 0;
-
-        this.hasCasilla = existeCasilla;
-        this.casillaChecked = true;
-
-        if (!existeCasilla) {
-          console.warn("El usuario no tiene una casilla activa en el sistema.");
+        if (!designacionId) {
+          console.warn("Sin designacion activa valida.");
+          this.hasCasilla = false;
+          this.casillaChecked = true;
+          return true;
         }
 
-        return true;
-      } catch (error) {
-        console.error('Error validando casilla del usuario:', error);
-        this.hasCasilla = false;
-        this.casillaChecked = true;
-        return true;
-      }
+        try {
+          // Consulta minima: solo verifica existencia con una pagina de 1 elemento.
+          const response = await ApiCasillaService.get('/casillas', {
+            designacion_id : designacionId,
+            per_page       : 1,
+            page           : 1,
+          });
+
+          const casillas = response?.data?.data || [];
+          const existeCasilla = Array.isArray(casillas) && casillas.length > 0;
+
+          this.hasCasilla = existeCasilla;
+          this.casillaChecked = true;
+
+          if (!existeCasilla) {
+            console.warn("El usuario no tiene una casilla activa en el sistema.");
+          }
+
+          return true;
+        } catch (error) {
+          console.error('Error validando casilla del usuario:', error);
+          this.hasCasilla = false;
+          this.casillaChecked = true;
+          return true;
+        } finally {
+          this.casillaRequest = null;
+        }
+      })();
+
+      return await this.casillaRequest;
     },
 
-    // Valida token remoto y sincroniza datos de usuario en el store.
+    // Valida token remoto y sincroniza datos de usuario en el store (optimizado con caché stale-while-revalidate).
     async validateToken() {
-      try {
-        // 1) Obtiene el usuario autenticado desde el servicio de auth.
-        const { data } = await ApiService.get('/usuario');
-        JwtService.saveUserLogged(data);
-
-        // 2) Actualiza estado local para habilitar rutas privadas.
-        this.$patch({
-          isAuthenticated : true,
-          userData        : data
-        });
-      } catch (error) {
-        console.error("Token inválido o expirado:", error);
-        this.logout();
+      const hasCache = this.isAuthenticated && this.userData;
+      if (hasCache) {
+        if (!this.validationRequest) {
+          this.validationRequest = (async () => {
+            try {
+              const { data } = await ApiService.get('/usuario');
+              JwtService.saveUserLogged(data);
+              this.$patch({ isAuthenticated: true, userData: data });
+            } catch (error) {
+              console.warn("Revalidación silenciosa en background falló:", error?.message);
+            } finally {
+              this.validationRequest = null;
+            }
+          })();
+        }
+        return true;
       }
+
+      if (this.validationRequest) {
+        return await this.validationRequest;
+      }
+
+      this.validationRequest = (async () => {
+        try {
+          const { data } = await ApiService.get('/usuario');
+          JwtService.saveUserLogged(data);
+          this.$patch({
+            isAuthenticated : true,
+            userData        : data
+          });
+          return true;
+        } catch (error) {
+          console.error("Token inválido o expirado:", error);
+          this.logout();
+          return false;
+        } finally {
+          this.validationRequest = null;
+        }
+      })();
+
+      return await this.validationRequest;
     },
 
     // Ejecuta cierre de sesion remoto y limpia estado/token local.

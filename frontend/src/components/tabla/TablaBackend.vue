@@ -56,19 +56,19 @@
             </slot>
           </tr>
 
-          <tr v-if="loading">
-            <td :colspan="columns.length" class="text-center py-5">
-              <div class="d-flex flex-column align-items-center justify-content-center">
-                <div class="fw-bold fs-4 mb-0" style="background: linear-gradient(45deg, #0d6efd, #6f42c1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-                  Cargando datos
-                </div>
-                <div class="progress mt-3" style="width: 200px; height: 10px;">
-                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%"></div>
-                </div>
-                <div class="text-muted fs-6 mt-2">Procesando información, por favor espere...</div>
-              </div>
-            </td>
-          </tr>
+          <!-- Skeletons de carga -->
+          <template v-if="loading">
+            <tr v-for="rowIndex in (pagination?.per_page || 10)" :key="'skeleton-' + rowIndex">
+              <td
+                v-for="(header, colIdx) in columns"
+                :key="'skeleton-col-' + colIdx"
+                :style="getColumnStyle(header)"
+                class="py-4"
+              >
+                <span class="skeleton-bar" :style="{ width: getSkeletonWidth(colIdx) }"></span>
+              </td>
+            </tr>
+          </template>
 
           <tr v-if="!loading && items.length === 0">
             <td :colspan="columns.length" class="text-center py-5">
@@ -380,6 +380,12 @@ const clearAndEmit = (fn) => {
 // === LISTENERS GLOBALES DE TECLADO ===
 onMounted(() => window.addEventListener('keydown', onGlobalKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
+
+// === SKELETON WIDGET HELPERS ===
+const getSkeletonWidth = (colIdx) => {
+  const widths = ['70%', '85%', '90%', '50%', '60%', '75%', '40%', '80%', '95%', '65%']
+  return widths[colIdx % widths.length]
+}
 </script>
 
 <style scoped>
@@ -389,5 +395,28 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown))
     align-items: stretch !important;
     gap: 0.5rem;
   }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-bar {
+  display: inline-block;
+  height: 1.15rem;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(180, 180, 180, 0.15) 25%, rgba(180, 180, 180, 0.45) 50%, rgba(180, 180, 180, 0.15) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 0.8s infinite linear;
+  vertical-align: middle;
+}
+
+tbody tr {
+  transition: background-color 0.1s ease, opacity 0.15s ease;
 }
 </style>

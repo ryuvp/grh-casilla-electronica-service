@@ -200,7 +200,13 @@ const props = defineProps({
 
 const { loading, resultado, validarFirmaConCache, forzarRevalidacion } = useValidacionFirma()
 const collapsed = ref(false)
-const fid = computed(() => props.fileId ? parseInt(props.fileId, 10) : null)
+const fid = computed(() => {
+  if (!props.fileId) return null
+  if (typeof props.fileId === 'string' && props.fileId.startsWith('constancia-')) {
+    return props.fileId
+  }
+  return parseInt(props.fileId, 10)
+})
 
 async function cargar() { if (fid.value) await validarFirmaConCache(fid.value) }
 async function revalidar() { if (fid.value) await forzarRevalidacion(fid.value) }

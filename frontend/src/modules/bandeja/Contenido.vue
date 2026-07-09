@@ -268,14 +268,22 @@ const baseApi = () => import.meta.env.VITE_API_URL || 'http://localhost:8089/api
 
 function descargarConstanciaEnvio() {
   if (!props.mensaje?.id) return
-  window.open(`${baseApi()}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${JwtService.getToken()}`, '_blank')
+  abrirPdfEnPopup({
+    url: `${baseApi()}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${JwtService.getToken()}`,
+    nombre: 'Constancia de Envío',
+    id: 'constancia-envio'
+  })
 }
 function descargarConstanciaLectura() {
   if (!props.mensaje?.id) return
   if (!props.mensaje.leido) {
-    Swal.fire({ icon: 'warning', title: 'No disponible', text: 'Solo disponible después de que el destinatario haya leído el mensaje.' })
+    Swal.fire({ icon: 'warning', title: 'No disponible', text: 'La constancia de lectura solo se puede descargar después de que el destinatario haya leído el mensaje.' })
     return
   }
-  window.open(`${baseApi()}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${JwtService.getToken()}`, '_blank')
+  abrirPdfEnPopup({
+    url: `${baseApi()}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${JwtService.getToken()}`,
+    nombre: 'Constancia de Lectura',
+    id: 'constancia-lectura'
+  })
 }
 </script>

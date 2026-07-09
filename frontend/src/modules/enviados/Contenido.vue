@@ -63,8 +63,8 @@
               </p>
               <p class="d-flex justify-content-between m-0 w-100">
                 <span class="text-muted" style="font-size: 10px;">{{ formatFileSize(file.tamanio) }}</span>
-                <a class="text-danger ms-2 px-2" style="cursor: pointer; font-size: 11px;" @click="downloadUploadedFile(index)">
-                  <i class="bi bi-x-circle"></i>
+                <a class="text-primary ms-2 px-2" style="cursor: pointer; font-size: 11px;" @click="downloadUploadedFile(index)" title="Visualizar archivo">
+                  <i class="bi bi-eye"></i>
                 </a>
               </p>
             </div>
@@ -80,6 +80,16 @@
   <div v-else class="text-muted text-center mt-5">
     <i>Selecciona un mensaje para ver su contenido.</i>
   </div>
+
+  <!-- Visor PDF fullscreen -->
+  <VentanaVisorPdf
+    v-if="datosVisor.visible && datosVisor.fileId"
+    :key="`visor-${datosVisor.fileId}`"
+    :file-id="datosVisor.fileId"
+    :pdf-url="datosVisor.pdfUrl"
+    :nombre="datosVisor.nombreArchivo"
+    @close="cerrarVisor"
+  />
 </template>
 
 <script setup>
@@ -88,6 +98,8 @@ import Swal from 'sweetalert2'
 import useDesignacionStore from '@/stores/designaciones/designacionStore'
 import { formatDateTimeLima } from '@/core/utils/dateTime'
 import JwtService from '@/core/services/JwtService'
+import VentanaVisorPdf from '@/components/visor/VentanaVisorPdf.vue'
+import { usePdfPopup } from '@/composables/usePdfPopup'
 
 const props = defineProps({
   mensaje : {
@@ -98,6 +110,7 @@ const props = defineProps({
 defineEmits(['cerrar'])
 
 const designacionStore = useDesignacionStore()
+const { datosVisor, abrirPdfEnPopup, cerrarVisor } = usePdfPopup()
 const deTexto = ref('No disponible')
 const paraTexto = ref('No disponible')
 
@@ -154,15 +167,18 @@ const getFileIconClass = (file) => {
 
 const downloadUploadedFile = (index) => {
   const file = props.mensaje.archivos[index]
-  window.open(file.url, '_blank')
+  abrirPdfEnPopup(file)
 }
 
 function descargarConstanciaEnvio() {
   if (!props.mensaje?.id) return
   const token = JwtService.getToken()
   const baseApi = import.meta.env.VITE_API_URL || 'http://localhost:8089/api'
-  const url = `${baseApi}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${token}`
-  window.open(url, '_blank')
+  abrirPdfEnPopup({
+    url: `${baseApi}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${token}`,
+    nombre: 'Constancia de Envío',
+    id: 'constancia-envio'
+  })
 }
 
 function descargarConstanciaLectura() {
@@ -177,7 +193,10 @@ function descargarConstanciaLectura() {
   }
   const token = JwtService.getToken()
   const baseApi = import.meta.env.VITE_API_URL || 'http://localhost:8089/api'
-  const url = `${baseApi}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${token}`
-  window.open(url, '_blank')
+  abrirPdfEnPopup({
+    url: `${baseApi}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${token}`,
+    nombre: 'Constancia de Lectura',
+    id: 'constancia-lectura'
+  })
 }
 </script>

@@ -53,14 +53,21 @@ export function usePdfPopup() {
   function abrirPdfEnPopup(archivo) {
     if (!archivo) return
 
-    const fileId = getArchivoId(archivo)
-    if (!fileId) {
-      console.warn('[usePdfPopup] Archivo sin ID:', archivo)
-      return
-    }
+    let fileId = getArchivoId(archivo)
+    let pdfUrl = ''
+    let nombreArchivo = archivo.nombre_original || archivo.nombre || 'Documento.pdf'
 
-    const pdfUrl = Files.buildVisualizarUrl(fileId)
-    const nombreArchivo = archivo.nombre_original || archivo.nombre || `Archivo_${fileId}.pdf`
+    if (archivo.url || archivo.pdfUrl) {
+      pdfUrl = archivo.url || archivo.pdfUrl
+      fileId = fileId || 'url-custom'
+    } else {
+      if (!fileId) {
+        console.warn('[usePdfPopup] Archivo sin ID y sin URL:', archivo)
+        return
+      }
+      pdfUrl = Files.buildVisualizarUrl(fileId)
+      nombreArchivo = archivo.nombre_original || archivo.nombre || `Archivo_${fileId}.pdf`
+    }
 
     datosVisor.value = {
       visible       : true,

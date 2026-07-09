@@ -526,4 +526,6 @@ class MensajeControllerTest extends TestCase
         $response->assertJsonPath('status', 'error');
         $this->assertArrayHasKey('sgd_referencias.0.tipo', $response->json('errors'));
     }
+
 }
+

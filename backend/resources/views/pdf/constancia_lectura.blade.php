@@ -22,7 +22,7 @@
         /* ── Logo ─────────────────────────────────────────── */
         .logo-header {
             text-align: left;
-            margin-bottom: 8pt;
+            margin-bottom: 35pt;
         }
         .logo-header img {
             height: 50pt;
@@ -158,8 +158,7 @@
     @endif
 
     <div class="decenio-header">
-        "Decenio de la igualdad de oportunidades para mujeres y hombres"<br>
-        "Año de la recuperación y consolidación de la economía peruana"
+      "{{ env('ANIO_NAME') }}"
     </div>
 
     <div class="titulo-bloque">

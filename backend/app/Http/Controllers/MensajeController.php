@@ -711,7 +711,12 @@ class MensajeController extends Controller
             'hash' => sha1($mensaje->id . $mensaje->created_at)
         ]);
 
-        return $pdf->stream('Certificado_Notificacion_' . ($documento['id'] ?: $mensaje->id) . '.pdf');
+        $pdfContent = $pdf->output();
+        $signedPdfContent = $this->firmarPdf($pdfContent, 'Certificado de Transmisión y Lectura Electrónica');
+        return response($signedPdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Certificado_Notificacion_' . ($documento['id'] ?: $mensaje->id) . '.pdf"',
+        ]);
     }
 
     /**
@@ -756,7 +761,12 @@ class MensajeController extends Controller
             'fecha_envio' => $fecha_envio
         ]);
 
-        return $pdf->stream('Constancia_Envio_' . $mensaje->id . '.pdf');
+        $pdfContent = $pdf->output();
+        $signedPdfContent = $this->firmarPdf($pdfContent, 'Constancia de Envío de Notificación');
+        return response($signedPdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Constancia_Envio_' . $mensaje->id . '.pdf"',
+        ]);
     }
 
     /**
@@ -805,15 +815,23 @@ class MensajeController extends Controller
             'fecha_lectura' => $fecha_lectura
         ]);
 
-        return $pdf->stream('Constancia_Lectura_' . $mensaje->id . '.pdf');
+        $pdfContent = $pdf->output();
+        $signedPdfContent = $this->firmarPdf($pdfContent, 'Constancia de Lectura de Notificación');
+        return response($signedPdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Constancia_Lectura_' . $mensaje->id . '.pdf"',
+        ]);
     }
 
 
     /**
      * Obtiene los detalles de la designación desde el Auth Service.
      */
-    private function fetchActorDetailsByDesignacionId(int $designacionId, string $token): array
+    private function fetchActorDetailsByDesignacionId(int $designacionId, ?string $token): array
     {
+        if (!$token) {
+            return [];
+        }
         $url = env('AUTH_SERVICE_URL') . '/api/designaciones/' . $designacionId . '/usuario-cargo';
         try {
             $response = \Illuminate\Support\Facades\Http::withToken($token)->get($url);
@@ -825,5 +843,131 @@ class MensajeController extends Controller
         }
 
         return [];
+    }
+
+    /**
+     * Firma digitalmente el contenido de un PDF usando el certificado PFX configurado.
+     */
+    private function firmarPdf(string $pdfRawContent, string $reason): string
+    {
+        $pfxPath = env('DIGITAL_SIGNATURE_PFX_PATH');
+        $password = env('DIGITAL_SIGNATURE_PFX_PASSWORD');
+
+        if (!$pfxPath) {
+            \Log::warning("Firma digital omitida: DIGITAL_SIGNATURE_PFX_PATH no configurado.");
+            return $pdfRawContent;
+        }
+
+        $absolutePfxPath = base_path($pfxPath);
+        if (!file_exists($absolutePfxPath)) {
+            $absolutePfxPath = $pfxPath;
+            if (!file_exists($absolutePfxPath)) {
+                \Log::warning("No se encontró el certificado de firma digital en: " . $pfxPath);
+                return $pdfRawContent;
+            }
+        }
+
+        $certs = [];
+        if (!openssl_pkcs12_read(file_get_contents($absolutePfxPath), $certs, $password)) {
+            \Log::error("No se pudo leer el certificado digital PFX para la firma.");
+            return $pdfRawContent;
+        }
+
+        $privateKey = $certs['pkey'];
+        $publicCert = $certs['cert'];
+
+        $tempInput = tempnam(sys_get_temp_dir(), 'pdf_in');
+        file_put_contents($tempInput, $pdfRawContent);
+
+        $tempOutput = tempnam(sys_get_temp_dir(), 'pdf_out');
+
+        try {
+            $pdf = new \setasign\Fpdi\Tcpdf\Fpdi();
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+
+            $pageCount = $pdf->setSourceFile($tempInput);
+
+            $info = [
+                'Name' => 'GRH Casilla Electrónica',
+                'Location' => 'Lima, Perú',
+                'Reason' => $reason,
+                'ContactInfo' => 'soporte@grh.gob.pe',
+            ];
+
+            // Aplicar firma digital criptográfica PKCS#7
+            $pdf->setSignature($publicCert, $privateKey, $password, '', 1, $info);
+
+            $pdf->SetAutoPageBreak(false);
+
+            for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+                $templateId = $pdf->importPage($pageNo);
+                $size = $pdf->getTemplateSize($templateId);
+                $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $pdf->useTemplate($templateId);
+
+                // Estampar firma visual en la última página
+                if ($pageNo === $pageCount) {
+                    $w = 72;
+                    $h = 24;
+                    $x = $size['width'] - $w - 15; // 15mm de margen derecho
+                    $y = 15; // 15mm de margen superior (esquina superior derecha)
+
+                    // 1. Establecer la posición de la firma digital invisible/interactiva en el lector de PDF
+                    $pdf->setSignatureAppearance($x, $y, $w, $h);
+
+                    // 2. Dibujar el logo del Gobierno Regional a la izquierda de la firma si existe
+                    $logoPath = public_path('media/logo-oficial.png');
+                    if (file_exists($logoPath)) {
+                        $pdf->Image($logoPath, $x + 1, $y + 3.5, 17, 17);
+                    }
+
+                    // Dibujar una línea vertical divisoria sutil
+                    $pdf->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(200, 200, 200)));
+                    $pdf->Line($x + 19.5, $y + 2.5, $x + 19.5, $y + 21.5);
+
+                    // Escribir el texto de la firma con tipografía adecuada
+                    $pdf->SetTextColor(30, 30, 30);
+                    
+                    // Título
+                    $pdf->SetFont('helvetica', 'B', 6.5);
+                    $pdf->SetXY($x + 21, $y + 2.5);
+                    $pdf->Cell($w - 22, 3, 'FIRMADO DIGITALMENTE', 0, 1, 'L');
+
+                    // Detalles
+                    $pdf->SetFont('helvetica', '', 5.5);
+                    $pdf->SetXY($x + 21, $y + 6);
+                    $pdf->Cell($w - 22, 3.2, 'Entidad: GOBIERNO REGIONAL DE HUÁNUCO', 0, 1, 'L');
+                    
+                    $pdf->SetXY($x + 21, $y + 9.5);
+                    
+                    // Limitar tamaño de razón si es muy larga
+                    $shortReason = strlen($reason) > 38 ? substr($reason, 0, 35) . '...' : $reason;
+                    $pdf->Cell($w - 22, 3.2, 'Motivo: ' . $shortReason, 0, 1, 'L');
+                    
+                    $pdf->SetXY($x + 21, $y + 13);
+                    $pdf->Cell($w - 22, 3.2, 'Fecha: ' . now()->setTimezone('America/Lima')->format('d/m/Y H:i:s'), 0, 1, 'L');
+
+                    $pdf->SetXY($x + 21, $y + 16.5);
+                    $pdf->Cell($w - 22, 3.2, 'Validador: sgd.grh.gob.pe/validador', 0, 1, 'L');
+
+                    // Restaurar propiedades de dibujo por defecto
+                    $pdf->SetTextColor(0, 0, 0);
+                }
+            }
+
+            $pdf->Output($tempOutput, 'F');
+            $signedContent = file_get_contents($tempOutput);
+
+            @unlink($tempInput);
+            @unlink($tempOutput);
+
+            return $signedContent;
+        } catch (\Exception $e) {
+            \Log::error("Error al firmar digitalmente el PDF: " . $e->getMessage());
+            @unlink($tempInput);
+            @unlink($tempOutput);
+            return $pdfRawContent;
+        }
     }
 }

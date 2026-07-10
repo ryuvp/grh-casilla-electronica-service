@@ -232,37 +232,40 @@ class MensajeController extends Controller
             return response()->json([]);
         }
 
-        $mensajes = Mensaje::whereHas('adjuntos', function ($query) use ($documentoIds) {
-            $query->where('tipo', 'documento_sgd')
-                ->whereIn('referencia_id', $documentoIds);
-        })
-        ->with(['adjuntos'])
-        ->get();
+        // Query única con JOIN: un solo viaje a BD en lugar de dos.
+        // Seleccionamos SOLO las columnas necesarias para el mapeo de respuesta.
+        $rows = \Illuminate\Support\Facades\DB::table('mensajes as m')
+            ->join('adjuntos as a', function ($join) use ($documentoIds) {
+                $join->on('a.mensaje_id', '=', 'm.id')
+                     ->where('a.tipo', 'documento_sgd')
+                     ->whereIn('a.referencia_id', $documentoIds)
+                     ->whereNull('a.deleted_at');
+            })
+            ->whereNull('m.deleted_at')
+            ->select([
+                'a.referencia_id as documento_id',
+                'm.id            as mensaje_id',
+                'm.leido',
+                'm.created_at    as fecha_envio',
+                'm.read_at       as fecha_lectura',
+                'm.casilla_origen_id',
+                'm.casilla_destino_id',
+            ])
+            ->get()
+            ->keyBy('documento_id');
 
         $mapping = [];
-        foreach ($mensajes as $mensaje) {
-            $adjunto = $mensaje->adjuntos
-                ->where('tipo', 'documento_sgd')
-                ->first();
-
-            if ($adjunto) {
-                $docId = $adjunto->referencia_id;
-                $mapping[$docId] = [
-                    'enviado' => true,
-                    'mensaje_id' => $mensaje->id,
-                    'leido' => (bool) $mensaje->leido,
-                    'fecha_envio' => $mensaje->created_at ? $mensaje->created_at->toDateTimeString() : null,
-                    'fecha_lectura' => $mensaje->read_at ? $mensaje->read_at->toDateTimeString() : null,
-                    'casilla_origen_id' => $mensaje->casilla_origen_id,
-                    'casilla_destino_id' => $mensaje->casilla_destino_id,
-                ];
-            }
-        }
-
         foreach ($documentoIds as $id) {
-            if (!isset($mapping[$id])) {
-                $mapping[$id] = null;
-            }
+            $row = $rows->get($id);
+            $mapping[$id] = $row ? [
+                'enviado'           => true,
+                'mensaje_id'        => $row->mensaje_id,
+                'leido'             => (bool) $row->leido,
+                'fecha_envio'       => $row->fecha_envio,
+                'fecha_lectura'     => $row->fecha_lectura,
+                'casilla_origen_id' => $row->casilla_origen_id,
+                'casilla_destino_id'=> $row->casilla_destino_id,
+            ] : null;
         }
 
         return response()->json($mapping);

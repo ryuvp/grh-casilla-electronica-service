@@ -489,3 +489,112 @@ tr.table-active:hover { background-color: rgba(99, 102, 241, 0.18) !important; }
   text-align: center;
 }
 .ce-integrity span { font-family: monospace; color: #0891b2; font-size: 11px; }
+
+/* ─── Dark Mode overrides for Casilla Electronica ─── */
+html[data-bs-theme="dark"] {
+  --ce-border      : var(--bs-border-color, #2b2b40);
+  --ce-bg          : var(--bs-body-bg, #151521);
+  --ce-white       : transparent;
+  --ce-text        : var(--bs-body-color, #ffffff);
+  --ce-muted       : var(--bs-gray-500, #a1a5b7);
+  --ce-blue        : #3b82f6;
+  --ce-blue-light  : rgba(59, 130, 246, 0.15);
+  --ce-row-hover   : rgba(255, 255, 255, 0.05);
+  --ce-row-selected: rgba(59, 130, 246, 0.2);
+  --ce-row-unread  : transparent;
+  --ce-row-read    : transparent;
+  --ce-green       : #2ece7c;
+}
+
+html[data-bs-theme="dark"] .ce-bandeja,
+html[data-bs-theme="dark"] .ce-filter-bar,
+html[data-bs-theme="dark"] .ce-gmail-toolbar,
+html[data-bs-theme="dark"] .ce-gmail-footer {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: var(--bs-border-color, #2b2b40) !important;
+}
+
+html[data-bs-theme="dark"] .ce-gmail-row {
+  background: transparent !important;
+  border-bottom: 1px solid var(--bs-border-color, #2b2b40) !important;
+  color: var(--bs-body-color, #ffffff) !important;
+}
+
+html[data-bs-theme="dark"] .ce-gmail-row:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+html[data-bs-theme="dark"] .ce-gmail-row--unread {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+html[data-bs-theme="dark"] .ce-gmail-row--selected {
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+html[data-bs-theme="dark"] .ce-col-sender {
+  color: #2ece7c !important;
+}
+
+html[data-bs-theme="dark"] .ce-col-subject {
+  color: var(--bs-body-color, #ffffff) !important;
+}
+
+html[data-bs-theme="dark"] .ce-col-date {
+  color: var(--bs-gray-500, #a1a5b7) !important;
+}
+
+html[data-bs-theme="dark"] .el-select__wrapper {
+  background-color: var(--bs-body-bg, #151521) !important;
+  box-shadow: 0 0 0 1px var(--bs-border-color, #2b2b40) inset !important;
+}
+
+html[data-bs-theme="dark"] .el-select__placeholder {
+  color: var(--bs-gray-500, #a1a5b7) !important;
+}
+
+html[data-bs-theme="dark"] .el-select__selected-item {
+  color: var(--bs-body-color, #ffffff) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-bs-theme="dark"] .el-input__wrapper {
+  background-color: var(--bs-body-bg, #151521) !important;
+  box-shadow: 0 0 0 1px var(--bs-border-color, #2b2b40) inset !important;
+}
+
+html[data-bs-theme="dark"] .el-input__inner {
+  color: var(--bs-body-color, #ffffff) !important;
+}
+
+html[data-bs-theme="dark"] .el-tag {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--bs-border-color, #2b2b40) !important;
+  color: #ffffff !important;
+}
+
+html[data-bs-theme="dark"] .el-select__popper,
+html[data-bs-theme="dark"] .el-popper.is-light,
+html[data-bs-theme="dark"] .el-picker-panel,
+html[data-bs-theme="dark"] .el-date-picker {
+  background-color: #1e1e2d !important;
+  border-color: #2b2b40 !important;
+  color: #ffffff !important;
+}
+
+html[data-bs-theme="dark"] .el-picker-panel__body,
+html[data-bs-theme="dark"] .el-date-table th,
+html[data-bs-theme="dark"] .el-date-table td.next-month,
+html[data-bs-theme="dark"] .el-date-table td.prev-month {
+  color: var(--bs-gray-500, #a1a5b7) !important;
+}
+
+html[data-bs-theme="dark"] .el-date-table td.available {
+  color: #ffffff !important;
+}
+
+html[data-bs-theme="dark"] .el-date-table td.current:not(.disabled) .el-date-table-cell__text {
+  background-color: var(--bs-primary, #3b82f6) !important;
+}
+

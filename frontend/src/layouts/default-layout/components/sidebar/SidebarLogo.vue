@@ -9,19 +9,19 @@
     <router-link to="/">
       <img
         v-if="layout === 'dark-sidebar' || (themeMode === 'dark' && layout === 'light-sidebar')"
-        alt="Logo"
-        :src="getAssetPath('src/assets/img/logoDark.png')"
+        alt="Logo dark"
+        :src="logoDark"
         class="h-45px app-sidebar-logo-default center"
       />
       <img
         v-if="themeMode === 'light' && layout === 'light-sidebar'"
-        alt="Logo"
-        :src="getAssetPath('src/assets/img/logoLight.png')"
+        alt="Logo light"
+        :src="logoLight"
         class="h-45px app-sidebar-logo-default center"
       />
       <img
-        alt="Logo"
-        :src="getAssetPath('src/assets/img/logomin.png')"
+        alt="Logo minimized"
+        :src="logoMin"
         class="h-35px app-sidebar-logo-minimize"
       />
     </router-link>
@@ -46,57 +46,37 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { onMounted, ref } from "vue";
 import { ToggleComponent } from "@/assets/ts/components";
-import { getAssetPath } from "@/core/helpers/assets";
-import { layout, sidebarToggleDisplay, themeMode } from "@/layouts/default-layout/config/helper";
 
-// Props (runtime)
+// Importación directa de assets (garantiza carga correcta en dev y build)
+import logoDark from "@/assets/img/logoDark.png";
+import logoLight from "@/assets/img/logoLight.png";
+import logoMin from "@/assets/img/logomin.png";
+
+import {
+  layout,
+  sidebarToggleDisplay,
+  themeMode,
+} from "@/layouts/default-layout/config/helper";
+
 const props = defineProps({
-  sidebarRef : { type: Object, default: null }, // HTMLElement | null
+  sidebarRef : { type: Object, default: null },
 });
 
 const toggleRef = ref(null);
 
-let toggleObj = null;
-let onChangeHandler = null;
+onMounted(() => {
+  setTimeout(() => {
+    const toggleObj = ToggleComponent.getInstance(toggleRef.value);
+    if (!toggleObj) return;
 
-onMounted(async () => {
-  await nextTick(); // Asegura que el DOM esté listo
-
-  if (!toggleRef.value) return;
-
-  // Metronic: obtiene la instancia si ya existe
-  toggleObj = ToggleComponent.getInstance(toggleRef.value);
-
-  if (!toggleObj) {
-    toggleObj = new ToggleComponent(toggleRef.value, {
-      saveState : false
+    toggleObj.on("kt.toggle.change", function () {
+      props.sidebarRef?.classList.add("animating");
+      setTimeout(() => {
+        props.sidebarRef?.classList.remove("animating");
+      }, 300);
     });
-  }
-
-  // Evita crear funciones anónimas sueltas: guardamos la referencia
-  onChangeHandler = () => {
-    // Añade clase para evitar hover mientras anima
-    props.sidebarRef?.classList.add("animating");
-    // Retira la clase luego de la animación (300ms por tu comentario)
-    setTimeout(() => props.sidebarRef?.classList.remove("animating"), 300);
-  };
-
-  toggleObj.on("kt.toggle.change", onChangeHandler);
-});
-
-onBeforeUnmount(() => {
-  // Limpieza del listener si la API lo soporta
-  try {
-    if (toggleObj && onChangeHandler && typeof toggleObj.off === "function") {
-      toggleObj.off("kt.toggle.change", onChangeHandler);
-    }
-  } catch (error) {
-    // no-op: algunas versiones no exponen .off
-    console.warn("Error removing toggle change listener:", error);
-  }
-  toggleObj = null;
-  onChangeHandler = null;
+  }, 1);
 });
 </script>

@@ -36,7 +36,7 @@ watch(
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(255, 255, 255, 0.95); /* Fondo blanco semitransparente */
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;

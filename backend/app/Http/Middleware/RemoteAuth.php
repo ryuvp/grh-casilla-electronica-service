@@ -15,7 +15,6 @@ class RemoteAuth
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken() ?: $request->query('token');
-        //\Log::info("Token recibido: " . $token);
 
         if (!$token) {
             return response()->json(['error' => 'Token no proporcionado'], 401);
@@ -23,36 +22,40 @@ class RemoteAuth
 
         $authServiceUrl = env('AUTH_SERVICE_URL') . '/api/usuario';
 
-        try {
-            $response = Http::withToken($token)->get($authServiceUrl);
+        $cacheKey = 'auth_user_' . hash('sha256', $token);
+        $userData = \Illuminate\Support\Facades\Cache::get($cacheKey);
 
-            if ($response->unauthorized() || $response->forbidden()) {
-                return response()->json(['message' => 'Token inválido'], 401);
+        if (!$userData) {
+            try {
+                $response = Http::timeout(3)->withToken($token)->get($authServiceUrl);
+
+                if ($response->unauthorized() || $response->forbidden()) {
+                    return response()->json(['message' => 'Token inválido'], 401);
+                }
+
+                $userData = $response->json();
+                \Illuminate\Support\Facades\Cache::put($cacheKey, $userData, 600);
+            } catch (ConnectionException $e) {
+                return response()->json([
+                    'error' => 'No se pudo conectar al servicio de autenticación',
+                    'details' => $e->getMessage()
+                ], 503);
+            } catch (RequestException $e) {
+                return response()->json([
+                    'error' => 'No se pudo conectar al servicio de autenticación',
+                    'details' => $e->getMessage()
+                ], 503);
             }
-
-            // Puedes compartir datos del usuario si quieres
-            //  \Log::info("Respuesta auth-service: " . $response->body());
-            $userData = $response->json();
-            $request->merge(['auth_user' => $userData]);
-
-            // Auto-creación de casilla si la designación activa no posee una en la base de datos
-            $designacionId = $this->resolveDesignacionId($userData);
-            if ($designacionId) {
-                $this->ensureCasillaExists($designacionId);
-            }
-
-            return $next($request);
-        } catch (ConnectionException $e) {
-            return response()->json([
-                'error' => 'No se pudo conectar al servicio de autenticación',
-                'details' => $e->getMessage()
-            ], 503);
-        } catch (RequestException $e) {
-            return response()->json([
-                'error' => 'No se pudo conectar al servicio de autenticación',
-                'details' => $e->getMessage()
-            ], 503);
         }
+
+        $request->merge(['auth_user' => $userData]);
+
+        $designacionId = $this->resolveDesignacionId($userData);
+        if ($designacionId) {
+            $this->ensureCasillaExists($designacionId);
+        }
+
+        return $next($request);
     }
 
     private function resolveDesignacionId(?array $authUser): ?int

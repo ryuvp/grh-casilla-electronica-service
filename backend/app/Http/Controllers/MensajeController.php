@@ -232,16 +232,23 @@ class MensajeController extends Controller
             return response()->json([]);
         }
 
-        // Query única con JOIN: un solo viaje a BD en lugar de dos.
-        // Seleccionamos SOLO las columnas necesarias para el mapeo de respuesta.
-        $rows = \Illuminate\Support\Facades\DB::table('mensajes as m')
-            ->join('adjuntos as a', function ($join) use ($documentoIds) {
-                $join->on('a.mensaje_id', '=', 'm.id')
-                     ->where('a.tipo', 'documento_sgd')
-                     ->whereIn('a.referencia_id', $documentoIds)
-                     ->whereNull('a.deleted_at');
+        // Limpieza de IDs para evitar desbordes y asegurar tipos enteros
+        $documentoIds = array_values(array_unique(array_filter(array_map('intval', $documentoIds))));
+        if (empty($documentoIds)) {
+            return response()->json([]);
+        }
+
+        // Query optimizada conduciendo desde `adjuntos` como tabla principal (driving table)
+        // para aprovechar el índice compuesto ['tipo', 'referencia_id'] en milisegundos,
+        // evitando escaneos secuenciales sobre la tabla `mensajes`.
+        $rows = \Illuminate\Support\Facades\DB::table('adjuntos as a')
+            ->join('mensajes as m', function ($join) {
+                $join->on('m.id', '=', 'a.mensaje_id')
+                     ->whereNull('m.deleted_at');
             })
-            ->whereNull('m.deleted_at')
+            ->where('a.tipo', 'documento_sgd')
+            ->whereIn('a.referencia_id', $documentoIds)
+            ->whereNull('a.deleted_at')
             ->select([
                 'a.referencia_id as documento_id',
                 'm.id            as mensaje_id',

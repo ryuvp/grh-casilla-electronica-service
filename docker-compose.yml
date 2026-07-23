@@ -40,6 +40,12 @@ services:
     networks:
       - grh_network
 
+  casilla_redis:
+    image: redis:alpine
+    container_name: casilla_redis
+    networks:
+      - grh_network
+
   frontend:
     build:
       context: ./frontend

@@ -18,6 +18,17 @@ export default function createApiService(baseURL) {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+
+      const userStr = JwtService.getUserLogged();
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          const designacionId = user?.designacion_logeada_id || user?.designacion_logeada?.id;
+          if (designacionId) {
+            config.headers['X-Designacion-Id'] = String(designacionId);
+          }
+        } catch (e) {}
+      }
       return config;
     },
     (error) => {

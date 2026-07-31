@@ -327,7 +327,7 @@ const useAuthStore = defineStore('auth', {
           return true;
         } catch (error) {
           console.error("Token inválido o expirado:", error);
-          this.logout();
+          this.logout(true);
           return false;
         } finally {
           this.validationRequest = null;
@@ -338,28 +338,34 @@ const useAuthStore = defineStore('auth', {
     },
 
     // Ejecuta cierre de sesion remoto y limpia estado/token local.
-    async logout() {
+    async logout(localOnly = false) {
       try {
-        await ApiService.post('/logout');
+        if (!localOnly) {
+          await ApiService.post('/logout');
+        }
       } catch (err) {
         console.warn("Logout remoto fallido:", err);
       } finally {
-        // Sincronizacion y limpieza de credenciales compartidas.
-        localStorage.setItem("cerrar-hijas", Date.now().toString());
+        // Limpieza local únicamente.
         JwtService.destroyToken();
         JwtService.destroyUserLogged();
 
-        // Resetea estado de autenticacion y cache de casilla.
         this.$patch({
-          isAuthenticated : false,
-          userData        : null,
-          hasCasilla      : null,
-          casillaChecked  : false,
+          isAuthenticated    : false,
+          userData           : null,
+          isAuthReady        : false,
+          hasCasilla         : false,
+          casillaChecked     : false,
         });
 
-        // Notifica a ventana padre para sincronizar logout entre contextos embebidos.
+        // Notificar al padre si existe o cerrar ventana
         if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({ type: "LOGOUT" }, allowedOrigin);
+          if (!localOnly) {
+            window.opener.postMessage({ type: "LOGOUT" }, allowedOrigin);
+          }
+          window.close();
+        } else {
+          window.location.replace('about:blank');
         }
       }
     },

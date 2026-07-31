@@ -25,6 +25,7 @@ const router = useRouter();
 const comunicadosOverlayRef = ref(null);
 
 const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
+let handshakeCompleted = false;
 
 // Evita repetir comunicados al navegar dentro de Casilla en la misma carga de la app.
 // Al recargar el navegador vuelve a false y permite recurrencias como cada_inicio_sesion.
@@ -58,25 +59,56 @@ async function finalizarInicioAutenticado() {
 
 const handleMessage = async (event) => {
   if (event.origin !== allowedOrigin) return;
+
+  if (event.data?.type === 'USER_UPDATED' && event.data.user) {
+    JwtService.saveUserLogged(event.data.user);
+    if (event.data.token) {
+      JwtService.saveToken(event.data.token);
+    }
+    window.location.reload();
+    return;
+  }
+
   if (!event.data || event.data.type !== 'OPEN_SERVICE') return;
 
-  const { token } = event.data;
+  // Evitar que el handshake se ejecute más de una vez;
+  // el listener permanece activo para seguir recibiendo USER_UPDATED.
+  if (handshakeCompleted) return;
+  handshakeCompleted = true;
+
+  const { token, user } = event.data;
 
   if (!token) {
     console.error("El mensaje OPEN_SERVICE no contiene un token valido.");
     return;
   }
 
+  if (user) {
+    JwtService.saveUserLogged(user);
+    authStore.userData = user;
+  }
+
   try {
     JwtService.saveToken(token);
-    await authStore.validateToken();
+    const result = await authStore.validateToken();
+    const isValid = result === true || result?.success;
+
+    if (!isValid) {
+      authStore.setAuthReady(true);
+      if (window.opener && !window.opener.closed) {
+        window.close();
+      } else {
+        window.location.replace(allowedOrigin + "/login");
+      }
+      return;
+    }
+
     await finalizarInicioAutenticado();
   } catch (error) {
     console.error("Error al iniciar servicio (handshake):", error);
     return;
   }
 
-  window.removeEventListener("message", handleMessage);
 };
 
 const handleCerrarHijas = (event) => {
@@ -100,16 +132,30 @@ onBeforeMount(() => {
 onMounted(() => {
   nextTick(async () => {
     const tokenExiste = JwtService.haveToken();
-    const tieneOrigen = !!window.opener;
+    const tieneOrigen = !!window.opener && !window.opener.closed;
 
     if (!tokenExiste && !tieneOrigen) {
       window.location.href = allowedOrigin + "/login";
       return;
     }
 
-    if (tokenExiste) {
+    if (tieneOrigen) {
+      // Esperando autenticación desde la ventana principal
+    } else if (tokenExiste) {
       try {
-        await authStore.validateToken();
+        const result = await authStore.validateToken();
+        const isValid = result === true || result?.success;
+
+        if (!isValid) {
+          authStore.setAuthReady(true);
+          if (window.opener && !window.opener.closed) {
+            window.close();
+          } else {
+            window.location.replace(allowedOrigin + "/login");
+          }
+          return;
+        }
+
         await finalizarInicioAutenticado();
       } catch (error) {
         console.error("Error al validar sesion guardada:", error);

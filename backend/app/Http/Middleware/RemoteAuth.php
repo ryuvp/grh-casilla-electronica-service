@@ -19,23 +19,58 @@ class RemoteAuth
         }
 
         $tokenHash = hash('sha256', $token);
-        $userData = Cache::get("auth_user_{$tokenHash}");
+        $designacionId = $request->header('X-Designacion-Id')
+            ?? $request->header('X-Designacion-Logeada-Id')
+            ?? $request->header('x-designacion-id')
+            ?? $request->header('x-designacion-logeada-id');
+
+        $cacheKey = "auth_user_{$tokenHash}" . ($designacionId ? "_desig_{$designacionId}" : '');
+        $userData = Cache::get($cacheKey);
 
         if ($userData) {
-            $request->merge(['auth_user' => $userData]);
-            return $next($request);
+            $cachedDesignacionId = $userData['designacion_logeada_id']
+                ?? $userData['designacion_logeada']['id']
+                ?? null;
+
+            if ($designacionId && (int) $cachedDesignacionId !== (int) $designacionId) {
+                Cache::forget($cacheKey);
+                Cache::forget("auth_user_{$tokenHash}");
+                $userData = null;
+            }
+
+            if ($userData) {
+                $request->merge(['auth_user' => $userData]);
+                return $next($request);
+            }
         }
 
         try {
             $authServiceUrl = config('services.auth.url') . '/api/usuario';
-            $response = Http::timeout(3)->withToken($token)->get($authServiceUrl);
+            $httpRequest = Http::timeout(5)->withToken($token);
+
+            if ($designacionId) {
+                $httpRequest->withHeaders(['X-Designacion-Id' => $designacionId]);
+            }
+
+            $response = $httpRequest->get($authServiceUrl);
+
+            if ($response->status() === 409) {
+                return response()->json($response->json(), 409);
+            }
 
             if ($response->unauthorized() || $response->forbidden()) {
                 return response()->json(['message' => 'Token inválido'], 401);
             }
 
             $userData = $response->json();
-            Cache::put("auth_user_{$tokenHash}", $userData, 600);
+            $currentDesignacionId = $userData['designacion_logeada_id']
+                ?? $userData['designacion_logeada']['id']
+                ?? null;
+
+            if ($currentDesignacionId) {
+                $currentCacheKey = "auth_user_{$tokenHash}_desig_{$currentDesignacionId}";
+                Cache::put($currentCacheKey, $userData, 10);
+            }
 
             $request->merge(['auth_user' => $userData]);
             return $next($request);

@@ -14,7 +14,7 @@
                 'text-start bg-thead',
                 header.sortEnabled ? 'sortable' : '',
                 sortState.label === header.columnLabel ? `table-sort-${sortState.order}` : '',
-                'min-w-100px'
+                header.width ? '' : 'min-w-100px'
               ]"
               :style="getColumnStyle(header)"
               @click="header.sortEnabled && emitSort(header.columnLabel)"

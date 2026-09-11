@@ -142,15 +142,15 @@ async function cargarDestinatarios(mensajes = []) {
   }
 
   const cargaId = ++cargaActual
-  const actores = await Promise.all(
-    mensajesValidos.map((mensaje) => designacionStore.resolveActorByCasillaId(mensaje.casilla_destino_id))
-  )
+  // Un solo lote (máx. 2 peticiones totales) en vez de 2 peticiones POR mensaje.
+  const casillaIds = [...new Set(mensajesValidos.map(m => m.casilla_destino_id))]
+  await designacionStore.resolveActorsByCasillaIds(casillaIds)
 
   if (cargaId !== cargaActual) return
 
   const nuevosTextos = {}
-  mensajesValidos.forEach((mensaje, index) => {
-    const actor = actores[index]
+  mensajesValidos.forEach((mensaje) => {
+    const actor = designacionStore.actorByCasillaId[mensaje.casilla_destino_id]
     nuevosTextos[mensaje.id] = actor?.usuario_nombre || `Casilla ${mensaje.casilla_destino_id}`
   })
 

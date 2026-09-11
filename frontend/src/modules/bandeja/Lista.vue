@@ -153,10 +153,15 @@ async function cargarRemitentes(mensajes = []) {
   const validos = mensajes.filter(m => m?.id && m?.casilla_origen_id)
   if (!validos.length) { deTextoByMensajeId.value = {}; return }
   const id = ++cargaActual
-  const actores = await Promise.all(validos.map(m => designacionStore.resolveActorByCasillaId(m.casilla_origen_id)))
+  // Un solo lote (máx. 2 peticiones totales) en vez de 2 peticiones POR mensaje.
+  const casillaIds = [...new Set(validos.map(m => m.casilla_origen_id))]
+  await designacionStore.resolveActorsByCasillaIds(casillaIds)
   if (id !== cargaActual) return
   const map = {}
-  validos.forEach((m, i) => { map[m.id] = actores[i]?.usuario_nombre || `Casilla ${m.casilla_origen_id}` })
+  validos.forEach((m) => {
+    const actor = designacionStore.actorByCasillaId[m.casilla_origen_id]
+    map[m.id] = actor?.usuario_nombre || `Casilla ${m.casilla_origen_id}`
+  })
   deTextoByMensajeId.value = map
 }
 

@@ -18,9 +18,25 @@ class LogsController extends Controller
      */
     public function index(Request $request)
     {
-        // Retorna coleccion filtrada de logs para auditoria tecnica.
+        // Paginación obligatoria: per_page=10 por defecto, máx. 100.
+        $perPage = min((int) ($request->per_page ?? 10), 100);
+        $page = max((int) ($request->page ?? 1), 1);
+
+        $query = Logs::filter($request);
+        if (! $request->filled('order')) {
+            $query->orderBy('id', 'desc');
+        }
+
+        $result = $query->paginate($perPage, ['*'], 'page', $page);
+
         return response()->json([
-            'data' => Logs::filter($request)->get(),
+            'data' => $result->items(),
+            'meta' => [
+                'current_page' => $result->currentPage(),
+                'per_page'     => $result->perPage(),
+                'total'        => $result->total(),
+                'last_page'    => $result->lastPage(),
+            ],
         ], Response::HTTP_OK);
     }
 

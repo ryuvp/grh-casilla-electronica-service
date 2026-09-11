@@ -6,10 +6,10 @@ const ApiAuthService = createApiService(import.meta.env.VITE_AUTH_API)
 
 export const useDesignacionStore = defineStore('designacionStore', {
   state : () => ({
-    resumenByDesignacionId : {},
-    actorByCasillaId       : {},
-    loadingByCasillaId     : {},
-    casillaByDesignacionId : {},
+    resumenByDesignacionId        : {},
+    actorByCasillaId              : {},
+    loadingByCasillaId            : {},
+    casillaByDesignacionId        : {},
     loadingCasillaByDesignacionId : {},
   }),
 
@@ -94,13 +94,13 @@ export const useDesignacionStore = defineStore('designacionStore', {
             if (!casilla?.id) return null
 
             return {
-              casillaId      : casilla.id,
-              casillaNumero  : casilla.numero,
-              designacionId  : item.designacion_id,
-              usuarioNombre  : item.usuario_nombre,
-              numeroDocumento: item.numero_documento,
-              cargoNombre    : item.cargo_nombre,
-              label          : `${item.usuario_nombre}${item.cargo_nombre ? ` - ${item.cargo_nombre}` : ''} - Casilla ${casilla.numero}`,
+              casillaId       : casilla.id,
+              casillaNumero   : casilla.numero,
+              designacionId   : item.designacion_id,
+              usuarioNombre   : item.usuario_nombre,
+              numeroDocumento : item.numero_documento,
+              cargoNombre     : item.cargo_nombre,
+              label           : `${item.usuario_nombre}${item.cargo_nombre ? ` - ${item.cargo_nombre}` : ''} - Casilla ${casilla.numero}`,
             }
           })
         )
@@ -133,6 +133,99 @@ export const useDesignacionStore = defineStore('designacionStore', {
         console.error('Error buscando designaciones:', error)
         return []
       }
+    },
+
+    // Resuelve el resumen usuario/cargo de un LOTE de designaciones en una sola
+    // petición (en vez de N llamadas a /designaciones/{id}/usuario-cargo).
+    async fetchResumenByDesignacionIds(designacionIds = []) {
+      const idsUnicos = [...new Set(
+        (designacionIds || [])
+          .map((id) => Number(id))
+          .filter((id) => id > 0 && !this.resumenByDesignacionId[id])
+      )]
+
+      if (!idsUnicos.length) return this.resumenByDesignacionId
+
+      try {
+        const response = await ApiAuthService.get('/designaciones', {
+          ids      : idsUnicos.join(','),
+          per_page : Math.min(Math.max(idsUnicos.length, 10), 100),
+        })
+
+        const items = Array.isArray(response?.data?.data) ? response.data.data : []
+        items.forEach((item) => {
+          const cargoTipo = item?.cargo_tipo || ''
+          const isPersonaNatural = String(cargoTipo).toLowerCase() === 'persona natural'
+          const usuarioNombre = [item?.usuario_nombre, item?.usuario_apellido].filter(Boolean).join(' ')
+
+          this.resumenByDesignacionId[item.id] = {
+            designacion_id     : item.id,
+            usuario_id         : item.usuario_id,
+            usuario_nombre     : usuarioNombre,
+            cargo_nombre       : item.cargo_nombre,
+            cargo_tipo         : cargoTipo,
+            is_persona_natural : isPersonaNatural,
+            display_name       : isPersonaNatural
+              ? usuarioNombre
+              : [usuarioNombre, item.cargo_nombre].filter(Boolean).join(' - '),
+          }
+        })
+      } catch (error) {
+        console.error('Error obteniendo resumen en lote de designaciones:', error)
+      }
+
+      return this.resumenByDesignacionId
+    },
+
+    // Resuelve un LOTE de actores por casilla_id en máximo 2 peticiones
+    // (1 a Casilla por los ids de casilla, 1 a Auth por las designaciones
+    // resultantes), en vez de 2 peticiones POR CADA casilla distinta.
+    async resolveActorsByCasillaIds(casillaIds = []) {
+      const idsUnicos = [...new Set(
+        (casillaIds || [])
+          .map((id) => Number(id))
+          .filter((id) => id > 0 && !this.actorByCasillaId[id])
+      )]
+
+      if (!idsUnicos.length) return this.actorByCasillaId
+
+      try {
+        const response = await ApiCasillaService.get('/casillas', {
+          id       : ['in', ...idsUnicos],
+          per_page : Math.min(Math.max(idsUnicos.length, 10), 100),
+        })
+
+        const casillas = Array.isArray(response?.data?.data) ? response.data.data : []
+        const designacionIdPorCasilla = new Map()
+
+        casillas.forEach((casilla) => {
+          if (casilla?.designacion_id) {
+            this.casillaByDesignacionId[casilla.designacion_id] = casilla
+            designacionIdPorCasilla.set(casilla.id, casilla.designacion_id)
+          }
+        })
+
+        await this.fetchResumenByDesignacionIds([...designacionIdPorCasilla.values()])
+
+        designacionIdPorCasilla.forEach((designacionId, casillaId) => {
+          const resumen = this.resumenByDesignacionId[designacionId]
+          if (!resumen) return
+
+          this.actorByCasillaId[casillaId] = {
+            casilla_id         : casillaId,
+            designacion_id     : designacionId,
+            usuario_nombre     : resumen.usuario_nombre,
+            cargo_nombre       : resumen.cargo_nombre,
+            cargo_tipo         : resumen.cargo_tipo,
+            is_persona_natural : !!resumen.is_persona_natural,
+            display_name       : resumen.display_name,
+          }
+        })
+      } catch (error) {
+        console.error('Error resolviendo actores en lote por casilla:', error)
+      }
+
+      return this.actorByCasillaId
     },
 
     // Resuelve actor por casilla para mostrar etiquetas De/Para en mensajeria.

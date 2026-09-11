@@ -842,11 +842,27 @@ class MensajeController extends Controller
         if (!$token) {
             return [];
         }
+
+        // Cache corta: los datos de usuario/cargo de una designación cambian con
+        // muy poca frecuencia, y esta función se invoca repetidamente (remitente
+        // + destinatario) al generar certificados/constancias en PDF. No se
+        // cachean fallos/respuestas vacías para no "congelar" un error transitorio.
+        $cacheKey = "casilla_actor_desig_{$designacionId}";
+        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        if ($cached) {
+            return $cached;
+        }
+
         $url = env('AUTH_SERVICE_URL') . '/api/designaciones/' . $designacionId . '/usuario-cargo';
         try {
             $response = \Illuminate\Support\Facades\Http::withToken($token)->get($url);
             if ($response->successful()) {
-                return $response->json();
+                $data = $response->json();
+                if (!empty($data)) {
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, $data, 300);
+                }
+
+                return $data;
             }
         } catch (\Exception $e) {
             \Log::error("Error fetching actor details for designacion {$designacionId}: " . $e->getMessage());

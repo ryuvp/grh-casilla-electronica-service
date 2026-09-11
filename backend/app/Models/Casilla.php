@@ -39,6 +39,7 @@ class Casilla extends Model
         'fecha_fin'     => 'nullable|date|after_or_equal:fecha_inicio',
     ];
     public static $filters = [
+        'id',
         'numero',
         'designacion_id',
         'activo',

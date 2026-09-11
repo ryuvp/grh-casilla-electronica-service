@@ -67,9 +67,14 @@ class RemoteAuth
                 ?? $userData['designacion_logeada']['id']
                 ?? null;
 
+            // Cache de corta duración para alto rendimiento en ráfagas.
+            // Se guarda también bajo la clave "plana" (sin designación): antes
+            // solo se guardaba la variante "_desig_{id}", por lo que cualquier
+            // request SIN header X-Designacion-Id nunca encontraba cache y
+            // golpeaba Auth Service en cada llamada.
+            Cache::put("auth_user_{$tokenHash}", $userData, 60);
             if ($currentDesignacionId) {
-                $currentCacheKey = "auth_user_{$tokenHash}_desig_{$currentDesignacionId}";
-                Cache::put($currentCacheKey, $userData, 10);
+                Cache::put("auth_user_{$tokenHash}_desig_{$currentDesignacionId}", $userData, 60);
             }
 
             $request->merge(['auth_user' => $userData]);

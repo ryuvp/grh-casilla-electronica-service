@@ -105,14 +105,14 @@ async function cargarDesignaciones(items = []) {
   const idsValidos = [...new Set(items.map(i => i?.designacion_id).filter(Boolean))];
   if (!idsValidos.length) return;
 
-  const actores = await Promise.all(
-    idsValidos.map(id => designacionStore.fetchResumenByDesignacionId(id))
-  );
+  // Una sola petición en lote en vez de una petición POR designación distinta.
+  await designacionStore.fetchResumenByDesignacionIds(idsValidos);
 
   const nuevoMap = {};
-  idsValidos.forEach((id, index) => {
-    if (actores[index]) {
-      nuevoMap[id] = actores[index];
+  idsValidos.forEach((id) => {
+    const resumen = designacionStore.resumenByDesignacionId[id];
+    if (resumen) {
+      nuevoMap[id] = resumen;
     }
   });
 

@@ -51,6 +51,16 @@ class MensajeResource extends JsonResource
             ])
             ->values();
 
+        // Destinatarios completos del envio (incluye al primario), con su
+        // estado de lectura individual. Fuente unica: tabla mensaje_destinatarios.
+        $destinatarios = $this->relationLoaded('destinatarios')
+            ? $this->destinatarios->map(fn ($d) => [
+                'casilla_id' => $d->casilla_id,
+                'leido'      => $d->leido,
+                'read_at'    => $d->read_at,
+            ])->values()
+            : null;
+
         return [
             'id'                  => $this->id,
             'asunto'              => $this->asunto,
@@ -63,6 +73,8 @@ class MensajeResource extends JsonResource
             'read_at'             => $this->read_at,
             'casilla_origen_id'   => $this->casilla_origen_id,
             'casilla_destino_id'  => $this->casilla_destino_id,
+            'casilla_destino_ids' => $destinatarios?->pluck('casilla_id')->values(),
+            'destinatarios'       => $destinatarios,
 
             // Referencias externas tipadas (fuente unica: tabla adjuntos).
             'archivo_ids'         => $archivoIds,

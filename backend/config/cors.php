@@ -15,7 +15,12 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // CORS lo maneja exclusivamente nginx (docker/nginx/default.conf) para este
+    // servicio. Dejar 'paths' vacio para que Laravel nunca agregue sus propios
+    // headers Access-Control-*: si ambos los agregan, el navegador recibe
+    // "Access-Control-Allow-Origin: *, *" (duplicado) y bloquea TODA peticion
+    // real, no solo el preflight.
+    'paths' => [],
 
     'allowed_methods' => ['*'],
 

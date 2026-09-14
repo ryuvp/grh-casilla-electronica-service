@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Resources\MensajeResource;
 use App\Models\Casilla;
 use App\Models\Mensaje;
+use App\Models\MensajeDestinatario;
+use App\Services\CasillaIdentityService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +17,18 @@ use Illuminate\Support\Facades\Validator;
  *
  * Gestiona bandejas y operaciones de mensajes entre casillas.
  * La autorizacion por permisos/roles se resuelve en frontend.
+ *
+ * La resolucion de identidad de casilla (quien es el solicitante, cual es
+ * su casilla, como se resuelve/crea/enlaza) vive en CasillaIdentityService:
+ * ver esa clase para el porque del diseño (la casilla identifica a una
+ * persona, no a un cargo/designacion).
  */
 class MensajeController extends Controller
 {
+    public function __construct(private readonly CasillaIdentityService $casillaIdentity)
+    {
+    }
+
     /**
      * Calcula per_page dentro de limites operativos.
      */
@@ -35,21 +46,11 @@ class MensajeController extends Controller
     {
         return MensajeResource::collection(
             $query
-                ->with('adjuntos')
+                ->with('adjuntos', 'destinatarios')
                 ->filter($request)
                 ->orderByDesc('created_at')
                 ->paginate($this->resolvePerPage($request))
         );
-    }
-
-    /**
-     * Obtiene datos de usuario autenticado inyectados por RemoteAuth.
-     */
-    private function getAuthUser(Request $request): array
-    {
-        $authUser = $request->input('auth_user', []);
-
-        return is_array($authUser) ? $authUser : [];
     }
 
     /**
@@ -61,7 +62,7 @@ class MensajeController extends Controller
             return true;
         }
 
-        $authUser = $this->getAuthUser($request);
+        $authUser = $this->casillaIdentity->getAuthUser($request);
 
         $roles = data_get($authUser, 'roles', []);
         if (!is_array($roles)) {
@@ -80,62 +81,32 @@ class MensajeController extends Controller
     }
 
     /**
-     * Resuelve la casilla activa para una designacion.
+     * Restringe el query a mensajes donde la casilla dada es destinataria,
+     * ya sea como destinatario primario (`casilla_destino_id`, compatibilidad
+     * single-destinatario) o como uno mas de un envio multiple (tabla pivote
+     * `mensaje_destinatarios`).
      */
-    private function getActiveCasillaByDesignacionId(int $designacionId): ?Casilla
+    private function scopeDestinatario($query, int $casillaId)
     {
-        return Casilla::where('designacion_id', $designacionId)
-            ->where('activo', true)
-            ->where(function ($query) {
-                $query->whereNull('fecha_fin')
-                    ->orWhereDate('fecha_fin', '>=', now()->toDateString());
-            })
-            ->first();
+        return $query->where(function ($q) use ($casillaId) {
+            $q->where('casilla_destino_id', $casillaId)
+                ->orWhereHas('destinatarios', function ($sub) use ($casillaId) {
+                    $sub->where('casilla_id', $casillaId);
+                });
+        });
     }
 
     /**
-     * Resuelve la casilla activa de la designacion autenticada.
+     * Indica si una casilla es destinataria de un mensaje ya cargado, sea como
+     * destinatario primario (`casilla_destino_id`) o como uno mas de un envio
+     * multiple (tabla pivote `mensaje_destinatarios`). Equivalente a
+     * `scopeDestinatario` pero para un modelo ya en memoria (autorizacion de
+     * acciones puntuales: ver, marcar leido, destacar, archivar, generar PDF).
      */
-    private function getAuthCasilla(Request $request): ?Casilla
+    private function esDestinatarioDelMensaje(Mensaje $mensaje, int $casillaId): bool
     {
-        $designacionId = $this->getAuthDesignacionId($request);
-        if (!$designacionId) {
-            return null;
-        }
-
-        return $this->getActiveCasillaByDesignacionId($designacionId);
-    }
-
-    /**
-     * Resuelve el ID de designacion activa desde el payload de auth.
-     */
-    private function getAuthDesignacionId(Request $request): ?int
-    {
-        $authUser = $this->getAuthUser($request);
-
-        $candidateIds = [
-            data_get($authUser, 'designacion_logeada.id'),
-            data_get($authUser, 'designacion_logeada_id'),
-            data_get($authUser, 'designacion_id'),
-        ];
-
-        foreach ($candidateIds as $candidate) {
-            if (is_numeric($candidate) && (int) $candidate > 0) {
-                return (int) $candidate;
-            }
-        }
-
-        $designaciones = data_get($authUser, 'designaciones_activas', data_get($authUser, 'designaciones', []));
-        if (is_array($designaciones) && !empty($designaciones)) {
-            $first = $designaciones[0] ?? null;
-            $firstId = is_array($first) ? ($first['id'] ?? null) : null;
-
-            if (is_numeric($firstId) && (int) $firstId > 0) {
-                return (int) $firstId;
-            }
-        }
-
-        return null;
+        return $mensaje->casilla_destino_id === $casillaId
+            || $mensaje->destinatarios()->where('casilla_id', $casillaId)->exists();
     }
 
     /**
@@ -145,7 +116,7 @@ class MensajeController extends Controller
      */
     public function bandejaEntrada(Request $request)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json([
                 'status' => 'error',
@@ -155,7 +126,7 @@ class MensajeController extends Controller
 
         return $this->paginateMensajes(
             $request,
-            Mensaje::where('casilla_destino_id', $casillaAuth->id)
+            $this->scopeDestinatario(Mensaje::query(), $casillaAuth->id)
                 ->where('archivado', false)
         );
     }
@@ -165,7 +136,7 @@ class MensajeController extends Controller
      */
     public function bandejaDestacados(Request $request)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json([
                 'status' => 'error',
@@ -175,7 +146,7 @@ class MensajeController extends Controller
 
         return $this->paginateMensajes(
             $request,
-            Mensaje::where('casilla_destino_id', $casillaAuth->id)
+            $this->scopeDestinatario(Mensaje::query(), $casillaAuth->id)
                 ->where('destacado', true)
                 ->where('archivado', false)
         );
@@ -186,7 +157,7 @@ class MensajeController extends Controller
      */
     public function bandejaArchivados(Request $request)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json([
                 'status' => 'error',
@@ -196,7 +167,7 @@ class MensajeController extends Controller
 
         return $this->paginateMensajes(
             $request,
-            Mensaje::where('casilla_destino_id', $casillaAuth->id)
+            $this->scopeDestinatario(Mensaje::query(), $casillaAuth->id)
                 ->where('archivado', true)
         );
     }
@@ -208,7 +179,7 @@ class MensajeController extends Controller
      */
     public function bandejaEnviados(Request $request)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json([
                 'status' => 'error',
@@ -283,19 +254,16 @@ class MensajeController extends Controller
      */
     public function show(Request $request, Mensaje $mensaje)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        if (
-            $mensaje->casilla_origen_id !== $casillaAuth->id &&
-            $mensaje->casilla_destino_id !== $casillaAuth->id
-        ) {
+        if ($mensaje->casilla_origen_id !== $casillaAuth->id && !$this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id)) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        return new MensajeResource($mensaje->load('adjuntos'));
+        return new MensajeResource($mensaje->load('adjuntos', 'destinatarios'));
     }
 
     /**
@@ -308,23 +276,10 @@ class MensajeController extends Controller
     public function store(Request $request)
     {
         if (!$request->filled('casilla_destino_id') && $request->filled('designacion_destino_id')) {
-            $destDesignacionId = (int) $request->input('designacion_destino_id');
-            $casillaDestino = Casilla::where('designacion_id', $destDesignacionId)
-                ->where('activo', true)
-                ->first();
-
-            if (!$casillaDestino) {
-                try {
-                    $casillaDestino = Casilla::create([
-                        'designacion_id' => $destDesignacionId,
-                        'numero'         => 'CAS-' . $destDesignacionId,
-                        'activo'         => true,
-                        'fecha_inicio'   => now()->toDateString(),
-                    ]);
-                } catch (\Exception $e) {
-                    \Log::error("Error auto-creando casilla destino para designación {$destDesignacionId} en store: " . $e->getMessage());
-                }
-            }
+            $casillaDestino = $this->casillaIdentity->resolveOrCreateCasillaPorDesignacion(
+                (int) $request->input('designacion_destino_id'),
+                $request->bearerToken()
+            );
 
             if ($casillaDestino) {
                 $request->merge(['casilla_destino_id' => $casillaDestino->id]);
@@ -338,7 +293,7 @@ class MensajeController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json([
                 'status' => 'error',
@@ -366,29 +321,151 @@ class MensajeController extends Controller
         $archivoIds = $validated['archivo_ids'] ?? [];
         $sgdReferencias = $validated['sgd_referencias'] ?? [];
         $normatividadReferencias = $validated['normatividad_referencias'] ?? [];
+        $casillaDestinoIds = $validated['casilla_destino_ids'] ?? [];
+        $administradosExternos = $validated['administrados_externos'] ?? [];
+        $designacionesDestinoIds = $validated['designaciones_destino_ids'] ?? [];
 
-        unset($validated['archivo_ids'], $validated['sgd_referencias'], $validated['normatividad_referencias']);
+        unset(
+            $validated['archivo_ids'],
+            $validated['sgd_referencias'],
+            $validated['normatividad_referencias'],
+            $validated['casilla_destino_ids'],
+            $validated['administrados_externos'],
+            $validated['designaciones_destino_ids'],
+        );
 
-        // Valida que la casilla destino exista y este activa.
-        $casillaDestino = Casilla::where('id', $validated['casilla_destino_id'])
+        // Resuelve/crea la casilla de la PERSONA detras de cada designacion
+        // adicional indicada (p.ej. cuando el consumidor -como el modulo
+        // "Enviar a Casilla" del SGD- conoce designaciones destino pero no sus
+        // casilla_id ni el usuario_id real). Si la resolucion/creacion falla
+        // (p.ej. error de BD o de Auth Service), se registra en
+        // $destinatariosNoResueltos en vez de perderse en silencio.
+        $destinatariosNoResueltos = [];
+        $token = $request->bearerToken();
+
+        foreach ($designacionesDestinoIds as $designacionId) {
+            $casillaInterna = $this->casillaIdentity->resolveOrCreateCasillaPorDesignacion((int) $designacionId, $token);
+
+            if ($casillaInterna) {
+                $casillaDestinoIds[] = $casillaInterna->id;
+            } else {
+                $destinatariosNoResueltos[] = ['tipo' => 'interno', 'designacion_id' => (int) $designacionId];
+            }
+        }
+
+        // Resuelve/crea la casilla externa (por DNI) de cada administrado indicado.
+        // El formato de DNI ya fue validado (8 digitos numericos); la verificacion
+        // de que el DNI corresponde a una persona real se hace en el frontend
+        // contra el store de personas (regla 7.2 de AGENTS.md), ya que este
+        // servicio no debe realizar llamadas HTTP sincronas a otros microservicios.
+        foreach ($administradosExternos as $administrado) {
+            $casillaExterna = $this->casillaIdentity->resolveOrCreateCasillaPersona(
+                null,
+                $administrado['dni'],
+                $administrado['nombre'] ?? null,
+                true
+            );
+
+            if ($casillaExterna && ($administrado['persona_id'] ?? null) && !$casillaExterna->persona_id) {
+                $casillaExterna->update(['persona_id' => $administrado['persona_id']]);
+            }
+
+            if ($casillaExterna) {
+                $casillaDestinoIds[] = $casillaExterna->id;
+            } else {
+                $destinatariosNoResueltos[] = ['tipo' => 'externo', 'dni' => $administrado['dni']];
+            }
+        }
+
+        // Une destinatario primario (compatibilidad single-destinatario) con la
+        // seleccion multiple, sin duplicados.
+        $destinoIds = array_values(array_unique(array_filter(array_merge(
+            [$validated['casilla_destino_id'] ?? null],
+            $casillaDestinoIds
+        ))));
+
+        if (empty($destinoIds)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => !empty($destinatariosNoResueltos)
+                    ? 'No se pudo crear/resolver la casilla de ningun destinatario indicado. Intente nuevamente.'
+                    : 'Debe indicar al menos un destinatario (casilla_destino_id, casilla_destino_ids, designaciones_destino_ids o administrados_externos)',
+                'destinatarios_no_resueltos' => $destinatariosNoResueltos,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Valida que todas las casillas destino existan y esten activas.
+        $casillasDestino = Casilla::whereIn('id', $destinoIds)
             ->where('activo', true)
             ->where(function ($query) {
                 $query->whereNull('fecha_fin')
                     ->orWhereDate('fecha_fin', '>=', now()->toDateString());
             })
-            ->first();
+            ->get()
+            ->keyBy('id');
 
-        if (!$casillaDestino) {
+        $idsInvalidos = array_values(array_diff($destinoIds, $casillasDestino->keys()->all()));
+        if (!empty($idsInvalidos)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'La casilla destinataria no existe o no esta activa',
+                'message' => 'Una o mas casillas destinatarias no existen o no estan activas',
+                'casilla_ids_invalidas' => $idsInvalidos,
             ], Response::HTTP_BAD_REQUEST);
         }
+
+        // Nunca se puede notificar a la propia casilla del emisor: equivale a
+        // derivarse un documento a si mismo, algo que tampoco esta permitido en
+        // el resto del flujo del SGD (derivaciones). Esto cubre tanto el caso
+        // directo (mismo casilla_id) como el caso donde el emisor aparece como
+        // destinatario "externo" por compartir el mismo DNI (misma persona,
+        // casilla distinta).
+        $authDni = $this->casillaIdentity->getAuthDni($request);
+        $destinoIdsSinAutoenvio = [];
+
+        foreach ($destinoIds as $id) {
+            $esUnoMismo = (int) $id === (int) $casillaAuth->id;
+            $casilla = $casillasDestino->get($id);
+            $mismoDni = $authDni && $casilla && $casilla->dni === $authDni;
+
+            if ($esUnoMismo || $mismoDni) {
+                $destinatariosNoResueltos[] = ['tipo' => 'auto_envio', 'casilla_id' => (int) $id];
+                continue;
+            }
+
+            $destinoIdsSinAutoenvio[] = $id;
+        }
+
+        $destinoIds = $destinoIdsSinAutoenvio;
+
+        if (empty($destinoIds)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No puede notificarse a si mismo. Indique al menos un destinatario distinto de su propia casilla.',
+                'destinatarios_no_resueltos' => $destinatariosNoResueltos,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // El destinatario primario mantiene compatibilidad con `casilla_destino_id`
+        // (bandejas y certificados PDF de flujos single-destinatario ya existentes).
+        $validated['casilla_destino_id'] = $destinoIds[0];
 
         try {
             DB::beginTransaction();
 
             $mensaje = Mensaje::create($validated);
+
+            $rowsDestinatarios = [];
+            foreach ($destinoIds as $casillaId) {
+                $rowsDestinatarios[] = [
+                    'mensaje_id' => $mensaje->id,
+                    'casilla_id' => $casillaId,
+                    'leido' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            MensajeDestinatario::insert($rowsDestinatarios);
+
             $rowsAdjuntos = [];
 
             foreach ($archivoIds as $archivoId) {
@@ -427,9 +504,17 @@ class MensajeController extends Controller
 
             DB::commit();
 
-            return (new MensajeResource($mensaje->load('adjuntos')))
-                ->response()
-                ->setStatusCode(Response::HTTP_CREATED);
+            $resource = new MensajeResource($mensaje->load('adjuntos', 'destinatarios'));
+
+            // Si hubo destinatarios cuya casilla no se pudo crear/resolver pero
+            // el mensaje igual se envio a los demas, se informa explicitamente
+            // en vez de perder esa falla en silencio (el emisor debe poder
+            // reintentar o corregir ese destinatario puntual).
+            if (!empty($destinatariosNoResueltos)) {
+                $resource = $resource->additional(['destinatarios_no_resueltos' => $destinatariosNoResueltos]);
+            }
+
+            return $resource->response()->setStatusCode(Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -441,22 +526,35 @@ class MensajeController extends Controller
     }
 
     /**
-     * Marca un mensaje como leido.
-     * Solo la casilla destino puede marcar lectura.
+     * Marca un mensaje como leido para la casilla autenticada.
+     *
+     * El estado de lectura se registra por destinatario (tabla pivote), ya que
+     * un mismo mensaje puede tener multiples destinatarios y cada uno genera
+     * su propia constancia de lectura. Se mantiene el espejo en `mensajes`
+     * (leido/read_at) para el destinatario primario, por compatibilidad con
+     * los flujos y certificados PDF de un solo destinatario.
      */
     public function marcarLeido(Request $request, Mensaje $mensaje)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
-        if (!$casillaAuth || $casillaAuth->id !== $mensaje->casilla_destino_id) {
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
+        $esDestinatario = $casillaAuth && $this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id);
+
+        if (!$esDestinatario) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        $mensaje->update([
-            'leido' => true,
-            'read_at' => now(),
-        ]);
+        MensajeDestinatario::where('mensaje_id', $mensaje->id)
+            ->where('casilla_id', $casillaAuth->id)
+            ->update(['leido' => true, 'read_at' => now()]);
 
-        return (new MensajeResource($mensaje->load('adjuntos')))->response();
+        if ($casillaAuth->id === $mensaje->casilla_destino_id) {
+            $mensaje->update([
+                'leido' => true,
+                'read_at' => now(),
+            ]);
+        }
+
+        return (new MensajeResource($mensaje->load('adjuntos', 'destinatarios')))->response();
     }
 
     /**
@@ -464,8 +562,10 @@ class MensajeController extends Controller
      */
     public function toggleDestacado(Request $request, Mensaje $mensaje)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
-        if (!$casillaAuth || $casillaAuth->id !== $mensaje->casilla_destino_id) {
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
+        $esDestinatario = $casillaAuth && $this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id);
+
+        if (!$esDestinatario) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
@@ -473,7 +573,7 @@ class MensajeController extends Controller
             'destacado' => !$mensaje->destacado,
         ]);
 
-        return (new MensajeResource($mensaje->load('adjuntos')))->response();
+        return (new MensajeResource($mensaje->load('adjuntos', 'destinatarios')))->response();
     }
 
     /**
@@ -481,8 +581,10 @@ class MensajeController extends Controller
      */
     public function toggleArchivado(Request $request, Mensaje $mensaje)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
-        if (!$casillaAuth || $casillaAuth->id !== $mensaje->casilla_destino_id) {
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
+        $esDestinatario = $casillaAuth && $this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id);
+
+        if (!$esDestinatario) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
@@ -490,7 +592,7 @@ class MensajeController extends Controller
             'archivado' => !$mensaje->archivado,
         ]);
 
-        return (new MensajeResource($mensaje->load('adjuntos')))->response();
+        return (new MensajeResource($mensaje->load('adjuntos', 'destinatarios')))->response();
     }
 
     /**
@@ -511,7 +613,7 @@ class MensajeController extends Controller
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth || $mensaje->casilla_origen_id !== $casillaAuth->id) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
@@ -638,7 +740,7 @@ class MensajeController extends Controller
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth || $mensaje->casilla_origen_id !== $casillaAuth->id) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
@@ -668,15 +770,16 @@ class MensajeController extends Controller
      */
     public function generarCertificadoPdf(Request $request, Mensaje $mensaje)
     {
-        // 1. Validar que el usuario tenga acceso a este mensaje
-        $casillaAuth = $this->getAuthCasilla($request);
+        // 1. Validar que el usuario tenga acceso a este mensaje (origen, o
+        // destinatario -primario o secundario de un envio multiple-).
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
         if (
-            $mensaje->casilla_origen_id !== $casillaAuth->id &&
-            $mensaje->casilla_destino_id !== $casillaAuth->id
+            $mensaje->casilla_origen_id !== $casillaAuth->id
+            && !$this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id)
         ) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
@@ -691,10 +794,10 @@ class MensajeController extends Controller
         $remitente = [];
         $destinatario = [];
         if ($casillaOrigen) {
-            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
         }
         if ($casillaDestino) {
-            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+            $destinatario = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
         }
 
         // 4. Buscar el documento adjunto de tipo documento_sgd
@@ -734,14 +837,14 @@ class MensajeController extends Controller
      */
     public function generarConstanciaEnvioPdf(Request $request, Mensaje $mensaje)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
         if (
-            $mensaje->casilla_origen_id !== $casillaAuth->id &&
-            $mensaje->casilla_destino_id !== $casillaAuth->id
+            $mensaje->casilla_origen_id !== $casillaAuth->id
+            && !$this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id)
         ) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
@@ -754,10 +857,10 @@ class MensajeController extends Controller
         $remitente = [];
         $destinatario = [];
         if ($casillaOrigen) {
-            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
         }
         if ($casillaDestino) {
-            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+            $destinatario = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
         }
 
         $fecha_envio = $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A';
@@ -784,42 +887,58 @@ class MensajeController extends Controller
      */
     public function generarConstanciaLecturaPdf(Request $request, Mensaje $mensaje)
     {
-        $casillaAuth = $this->getAuthCasilla($request);
+        $casillaAuth = $this->casillaIdentity->getAuthCasilla($request);
         if (!$casillaAuth) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        if (
-            $mensaje->casilla_origen_id !== $casillaAuth->id &&
-            $mensaje->casilla_destino_id !== $casillaAuth->id
-        ) {
+        $esOrigen = $mensaje->casilla_origen_id === $casillaAuth->id;
+        if (!$esOrigen && !$this->esDestinatarioDelMensaje($mensaje, $casillaAuth->id)) {
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        if (!$mensaje->leido || !$mensaje->read_at) {
+        // La constancia de lectura es por destinatario: si quien la solicita es
+        // un destinatario (primario o secundario), refleja SU propia lectura
+        // (tabla pivote mensaje_destinatarios), no la de otro destinatario del
+        // mismo envio multiple. Si quien la solicita es el origen (emisor),
+        // refleja al destinatario primario (compatibilidad de flujos de un solo
+        // destinatario, donde `mensajes.leido/read_at` sigue siendo el espejo).
+        if ($esOrigen) {
+            $leido = (bool) $mensaje->leido;
+            $readAt = $mensaje->read_at;
+            $casillaLectora = Casilla::find($mensaje->casilla_destino_id);
+        } else {
+            $destinatarioPivot = MensajeDestinatario::where('mensaje_id', $mensaje->id)
+                ->where('casilla_id', $casillaAuth->id)
+                ->first();
+            $leido = (bool) ($destinatarioPivot->leido ?? false);
+            $readAt = $destinatarioPivot->read_at ?? null;
+            $casillaLectora = $casillaAuth;
+        }
+
+        if (!$leido || !$readAt) {
             return response()->json(['error' => 'El mensaje aun no ha sido leido por el destinatario'], Response::HTTP_BAD_REQUEST);
         }
 
         $token = $request->bearerToken() ?: $request->query('token');
 
         $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
-        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
 
         $remitente = [];
         $destinatario = [];
         if ($casillaOrigen) {
-            $remitente = $this->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
+            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
         }
-        if ($casillaDestino) {
-            $destinatario = $this->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
+        if ($casillaLectora) {
+            $destinatario = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaLectora->designacion_id, $token);
         }
 
-        $fecha_lectura = $mensaje->read_at->setTimezone('America/Lima')->format('d/m/Y H:i:s');
+        $fecha_lectura = $readAt->setTimezone('America/Lima')->format('d/m/Y H:i:s');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_lectura', [
             'mensaje' => $mensaje,
             'casillaOrigen' => $casillaOrigen,
-            'casillaDestino' => $casillaDestino,
+            'casillaDestino' => $casillaLectora,
             'remitente' => $remitente,
             'destinatario' => $destinatario,
             'fecha_lectura' => $fecha_lectura

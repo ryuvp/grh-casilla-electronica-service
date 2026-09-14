@@ -261,15 +261,18 @@ const useAuthStore = defineStore('auth', {
         }
 
         try {
-          // Consulta minima: solo verifica existencia con una pagina de 1 elemento.
-          const response = await ApiCasillaService.get('/casillas', {
-            designacion_id : designacionId,
-            per_page       : 1,
-            page           : 1,
+          // Se consulta la bandeja de entrada (en vez de listar /casillas) porque
+          // el backend resuelve/crea u enlaza la casilla de la designacion
+          // autenticada en el momento si todavia no existe (p.ej. un ciudadano al
+          // que recien se le otorgo el rol de Casilla, o un trabajador al que
+          // nunca se le habia notificado nada). Una simple lectura de /casillas
+          // nunca dispara esa creacion y siempre reportaria "sin casilla".
+          const response = await ApiCasillaService.get('/mensajes/entrada', {
+            per_page : 1,
+            page     : 1,
           });
 
-          const casillas = response?.data?.data || [];
-          const existeCasilla = Array.isArray(casillas) && casillas.length > 0;
+          const existeCasilla = response?.status === 200;
 
           this.hasCasilla = existeCasilla;
           this.casillaChecked = true;

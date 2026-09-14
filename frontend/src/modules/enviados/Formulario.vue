@@ -82,14 +82,16 @@
           <!-- Cuerpo del modal -->
           <div class="modal-body px-0 py-1">
             <div class="container">
-              <!-- Destinatario -->
-              <el-form-item label="Casilla destino" prop="casilla_destino_id">
+              <!-- Destinatarios (multiple, interno y/o externo por DNI) -->
+              <el-form-item label="Destinatarios" prop="destinatariosSeleccionados">
                 <el-select
-                  v-model="formData.casilla_destino_id"
-                  placeholder="Busque por nombre o DNI y seleccione la casilla destino"
+                  v-model="destinatariosSeleccionados"
+                  placeholder="Busque por nombre/DNI (interno) o ingrese un DNI de 8 dígitos (ciudadano/administrado)"
                   filterable
                   remote
-                  :remote-method="buscarUsuarios"
+                  multiple
+                  value-key="key"
+                  :remote-method="buscarDestinatarios"
                   :loading="loadingUsuarios"
                   class="w-100 text-uppercase"
                   size="large"
@@ -97,11 +99,14 @@
                 >
                   <el-option
                     v-for="option in destinatariosOptions"
-                    :key="option.casillaId"
+                    :key="option.key"
                     :label="option.label"
-                    :value="option.casillaId"
+                    :value="option"
                   />
                 </el-select>
+                <div v-if="dniValidationError" class="text-danger small mt-1">
+                  {{ dniValidationError }}
+                </div>
               </el-form-item>
 
               <!-- Asunto -->
@@ -171,17 +176,42 @@ import Editor from '@/components/ckeditor/Editor.vue'
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
 import { useFileStore } from '@/stores/files/filesStore'
 import useDesignacionStore from '@/stores/designaciones/designacionStore'
+import useCasillaStore from '@/stores/casillas/casillasPaginadoStore'
+import useAuthStore from '@/stores/auth/authStore'
 
 const store = useMensajesStore()
 const fileStore = useFileStore()
 const designacionStore = useDesignacionStore()
+const casillaStore = useCasillaStore()
+const authStore = useAuthStore()
+
+// Identidad del trabajador autenticado: no puede notificarse a si mismo, ni
+// siquiera "como externo" con su propio DNI (equivale a derivarse un
+// documento a uno mismo, tampoco permitido en el resto del flujo del SGD).
+const miDesignacionId = () => authStore.userData?.designacion_logeada?.id || authStore.userData?.designacion_logeada_id
+const miDni = () => authStore.userData?.numero_documento
+
+// Peru: DNI valido = 8 digitos numericos.
+const DNI_REGEX = /^\d{8}$/
 
 const props = defineProps({ item: { type: Object, default: null } })
 
 const modalRef = ref(null)
 const modal = ref(null)
 
-const abrir = () => modal.value?.show()
+// Destinatarios elegidos en el multi-select: cada opcion es interna
+// ({ key, label, tipo:'interno', casillaId }) o externa, ya existente
+// ({ key, label, tipo:'externo', casillaId, dni }) o por crear
+// ({ key, label, tipo:'externo', dni, nuevo:true }).
+const destinatariosSeleccionados = ref([])
+const dniValidationError = ref('')
+
+const abrir = () => {
+  destinatariosSeleccionados.value = []
+  dniValidationError.value = ''
+  modal.value?.show()
+  sugerirDestinatarioDelExpediente()
+}
 
 const cerrar = async () => {
   /* for (const file of archivosSubidos.value) {
@@ -203,9 +233,17 @@ const isEdit = computed(() => !!props.item?.id)
 const archivosSubidos = ref([])
 const archivosCargando = ref(0)
 
+const validarDestinatarios = (rule, value, callback) => {
+  if (!destinatariosSeleccionados.value.length) {
+    callback(new Error('Debe seleccionar al menos un destinatario'))
+    return
+  }
+  callback()
+}
+
 const rules = computed(() => ({
-  casilla_destino_id : [{ required: true, message: 'La casilla destino es obligatoria', trigger: 'blur' }],
-  asunto             : [{ required: true, message: 'El asunto es obligatorio', trigger: 'blur' }],
+  destinatariosSeleccionados : [{ validator: validarDestinatarios, trigger: 'change' }],
+  asunto                     : [{ required: true, message: 'El asunto es obligatorio', trigger: 'blur' }],
 }))
 
 const submit = async () => {
@@ -213,9 +251,21 @@ const submit = async () => {
   try {
     await formRef.value.validate()
     const data = { ...formData.value }
+    delete data.casilla_destino_id
+
+    // Destinatarios ya resueltos a una casilla existente (interna o externa).
+    data.casilla_destino_ids = destinatariosSeleccionados.value
+      .filter(d => d.casillaId)
+      .map(d => d.casillaId)
+
+    // Destinatarios externos nuevos (solo se conoce el DNI, aun sin casilla):
+    // el backend resuelve o crea la casilla correspondiente de forma atomica.
+    data.administrados_externos = destinatariosSeleccionados.value
+      .filter(d => !d.casillaId && d.dni)
+      .map(d => ({ dni: d.dni, persona_id: d.personaId || null, nombre: d.label || null }))
 
     data.archivo_ids = archivosSubidos.value.map(f => f.id)
-    
+
     await store.createMensaje(data)
     await fileStore.marcarPermanentes(data.archivo_ids)
     await store.fetchCounts()
@@ -223,6 +273,7 @@ const submit = async () => {
     Swal.fire({ icon: 'success', title: 'Éxito', text: 'Mensaje enviado correctamente.' })
     cerrar()
     formData.value = { ...store.default }
+    destinatariosSeleccionados.value = []
     archivosSubidos.value = []
   } catch (error) {
     console.error('Error al enviar:', error)
@@ -282,24 +333,139 @@ const destinatariosOptions = ref([])
 const loadingUsuarios = ref(false)
 let timeout = null
 
-const buscarUsuarios = (query) => {
+// Busca la casilla externa activa ya registrada para un DNI (ciudadano/administrado).
+// Usa getSome (metodo canonico PMSG para resolver un lote/registro puntual sin
+// tocar el listado principal del store), evitando peticiones ad-hoc.
+const buscarCasillaExternaPorDni = async (dni) => {
+  try {
+    const response = await casillaStore.getSome({ dni, tipo: 'externo' })
+    const casilla = response?.data?.data?.[0] || null
+    return casilla
+  } catch (error) {
+    console.error('Error buscando casilla externa por DNI:', error)
+    return null
+  }
+}
+
+// Busqueda mixta de destinatarios: internos (por nombre/DNI de personal via
+// Auth Service) y externos (por DNI de 8 digitos de un ciudadano/administrado).
+const buscarDestinatarios = (query) => {
   clearTimeout(timeout)
-  if (!query || query.length < 2) {
+  dniValidationError.value = ''
+
+  const search = String(query || '').trim()
+  if (!search || search.length < 2) {
     destinatariosOptions.value = []
     loadingUsuarios.value = false
     return
   }
+
   timeout = setTimeout(async () => {
     loadingUsuarios.value = true
     try {
-      destinatariosOptions.value = await designacionStore.searchDestinatarios(query)
+      const esNumerico = /^\d+$/.test(search)
+
+      // No puede notificarse a si mismo, ni siquiera "como externo" con su propio DNI.
+      if (esNumerico && search.length === 8 && search === miDni()) {
+        dniValidationError.value = 'No puede notificarse a sí mismo.'
+        destinatariosOptions.value = []
+        return
+      }
+
+      if (esNumerico && search.length === 8) {
+        // Candidato a DNI externo: prioriza resolver casilla externa existente.
+        // El nombre se resuelve contra Auth Service (no solo nombre_externo de la
+        // casilla, que puede no estar registrado todavia) para poder confirmar
+        // visualmente que el DNI corresponde a la persona correcta antes de enviar.
+        const [casillaExterna, usuarioAuth, internosSinFiltrar] = await Promise.all([
+          buscarCasillaExternaPorDni(search),
+          designacionStore.buscarUsuarioPorDni(search),
+          designacionStore.searchDestinatarios(search),
+        ])
+        const internos = internosSinFiltrar.filter(item => item.designacionId !== miDesignacionId())
+
+        const nombreResuelto = casillaExterna?.nombre_externo
+          || (usuarioAuth ? `${usuarioAuth.nombre || ''} ${usuarioAuth.apellido || ''}`.trim() : '')
+
+        const externoOption = casillaExterna
+          ? {
+              key      : `externo-${casillaExterna.id}`,
+              casillaId: casillaExterna.id,
+              dni      : search,
+              tipo     : 'externo',
+              label    : `${nombreResuelto || 'Administrado (sin nombre registrado)'} - Casilla DNI ${search}`,
+            }
+          : {
+              key   : `externo-nuevo-${search}`,
+              dni   : search,
+              tipo  : 'externo',
+              nuevo : true,
+              label : nombreResuelto
+                ? `${nombreResuelto} - DNI ${search} (casilla nueva)`
+                : `DNI ${search} sin registro previo (verifique antes de enviar)`,
+            }
+
+        destinatariosOptions.value = [externoOption, ...internos]
+      } else if (esNumerico && search.length !== 8) {
+        dniValidationError.value = 'El DNI debe tener exactamente 8 dígitos'
+        const internos = await designacionStore.searchDestinatarios(search)
+        destinatariosOptions.value = internos.filter(item => item.designacionId !== miDesignacionId())
+      } else {
+        const internos = await designacionStore.searchDestinatarios(search)
+        destinatariosOptions.value = internos.filter(item => item.designacionId !== miDesignacionId())
+      }
     } catch (error) {
-      console.error('Error buscando usuarios:', error)
+      console.error('Error buscando destinatarios:', error)
       destinatariosOptions.value = []
     } finally {
       loadingUsuarios.value = false
     }
-  }, 1000)
+  }, 500)
+}
+
+// Auto-sugerencia: si el tramite/expediente que origina el envio trae el DNI
+// de un posible destinatario (props.item.administrado_dni), se busca su
+// casilla externa y se deja como SUGERENCIA visible en el desplegable, sin
+// pre-seleccionarla.
+//
+// Importante: el documento no necesariamente se notifica a quien inicio el
+// tramite (puede ir dirigido a otra persona, otra dependencia, o a varios
+// destinatarios distintos del solicitante). Por eso esta funcion nunca agrega
+// un destinatario por si sola: solo acerca la opcion para que el usuario la
+// revise y la seleccione manualmente si en efecto corresponde notificar al
+// administrado que inicio el tramite.
+const sugerirDestinatarioDelExpediente = async () => {
+  const dniSugerido = props.item?.administrado_dni
+  if (!dniSugerido || !DNI_REGEX.test(dniSugerido)) return
+  if (dniSugerido === miDni()) return // no puede notificarse a si mismo
+
+  const [casillaExterna, usuarioAuth] = await Promise.all([
+    buscarCasillaExternaPorDni(dniSugerido),
+    designacionStore.buscarUsuarioPorDni(dniSugerido),
+  ])
+
+  const nombreResuelto = casillaExterna?.nombre_externo
+    || (usuarioAuth ? `${usuarioAuth.nombre || ''} ${usuarioAuth.apellido || ''}`.trim() : '')
+
+  if (casillaExterna) {
+    destinatariosOptions.value = [{
+      key      : `externo-${casillaExterna.id}`,
+      casillaId: casillaExterna.id,
+      dni      : dniSugerido,
+      tipo     : 'externo',
+      label    : `Sugerido (administrado que inició el trámite) - ${nombreResuelto || 'Administrado sin nombre registrado'} - Casilla DNI ${dniSugerido}`,
+    }]
+  } else {
+    destinatariosOptions.value = [{
+      key   : `externo-nuevo-${dniSugerido}`,
+      dni   : dniSugerido,
+      tipo  : 'externo',
+      nuevo : true,
+      label : nombreResuelto
+        ? `Sugerido (administrado que inició el trámite) - ${nombreResuelto} - DNI ${dniSugerido} (aún sin casilla, se creará al enviar)`
+        : `Administrado que inició el trámite - DNI ${dniSugerido} sin nombre registrado (verifique antes de enviar)`,
+    }]
+  }
 }
 
 // --------------------------- Prioridad ---------------------------

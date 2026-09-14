@@ -100,7 +100,9 @@ export const useDesignacionStore = defineStore('designacionStore', {
               usuarioNombre   : item.usuario_nombre,
               numeroDocumento : item.numero_documento,
               cargoNombre     : item.cargo_nombre,
-              label           : `${item.usuario_nombre}${item.cargo_nombre ? ` - ${item.cargo_nombre}` : ''} - Casilla ${casilla.numero}`,
+              // La casilla es de la persona: se identifica por su DNI, no por
+              // un codigo tecnico interno/externo.
+              label           : `${item.usuario_nombre}${item.cargo_nombre ? ` - ${item.cargo_nombre}` : ''}${item.numero_documento ? ` - Casilla DNI ${item.numero_documento}` : ''}`,
             }
           })
         )
@@ -109,6 +111,26 @@ export const useDesignacionStore = defineStore('designacionStore', {
       } catch (error) {
         console.error('Error buscando destinatarios por designacion:', error)
         return []
+      }
+    },
+
+    // Resuelve el nombre de una persona por DNI contra Auth Service (filtro nativo
+    // numero_documento del modelo Usuario, datos ya existentes en la BD). Se usa
+    // para mostrar visualmente a quien se le va a notificar como destinatario
+    // externo, antes de confirmarlo.
+    async buscarUsuarioPorDni(dni) {
+      if (!/^\d{8}$/.test(String(dni || ''))) return null
+
+      try {
+        const response = await ApiAuthService.get('/usuarios', {
+          numero_documento : dni,
+          per_page         : 1,
+        })
+
+        return response?.data?.data?.[0] || null
+      } catch (error) {
+        console.error('Error buscando usuario por DNI:', error)
+        return null
       }
     },
 

@@ -3,8 +3,10 @@
     Menú desplegable de usuario que muestra avatar, nombre, correo y nombre de usuario.
     Incluye enlaces para ver el perfil y cerrar sesión.
   -->
-  <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold py-4 fs-6 w-275px"
-    data-kt-menu="true">
+  <div
+    class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-600 menu-state-bg-light-primary fw-semibold py-4 fs-6 w-275px bg-body text-body"
+    data-kt-menu="true"
+  >
     <div class="menu-item px-3">
       <div class="menu-content d-flex align-items-center px-3">
         <!--begin::Avatar-->
@@ -43,7 +45,7 @@
               {{ user?.numero_documento }}
             </span>
             <!-- Nombre de usuario (si existe) -->
-            <span class="text-muted fs-8" v-if="user?.nombre_usuario">
+            <span v-if="user?.nombre_usuario" class="text-muted fs-8">
               {{ user?.nombre_usuario }}
             </span>
           </div>
@@ -81,13 +83,13 @@
       <!--begin::Menu sub-->
       <div class="menu-sub menu-sub-dropdown w-175px py-4">
 
-         <!--begin::Menu item-->
-         <div class="menu-item px-3">
+        <!--begin::Menu item-->
+        <div class="menu-item px-3">
           <a
-            @click="setLang('es')"
             href="#"
             class="menu-link d-flex px-5"
             :class="{ active: currentLanguage === 'es' }"
+            @click="setLang('es')"
           >
             <span class="symbol symbol-20px me-4">
               <img
@@ -104,10 +106,10 @@
         <!--begin::Menu item-->
         <div class="menu-item px-3">
           <a
-            @click="setLang('en')"
             href="#"
             class="menu-link d-flex px-5"
             :class="{ active: currentLanguage === 'en' }"
+            @click="setLang('en')"
           >
             <span class="symbol symbol-20px me-4">
               <img
@@ -127,7 +129,7 @@
     <!--end::Menu item-->
     <div class="menu-item px-5">
       <!-- Botón para cerrar sesión -->
-      <a @click="signOut()" class="menu-link px-5"> Cerrar Sesión </a>
+      <a class="menu-link px-5" @click="signOut()"> Cerrar Sesión </a>
     </div>
   </div>
 </template>
@@ -160,13 +162,13 @@ const i18n = useI18n();
 i18n.locale.value = localStorage.getItem("lang") || "en";
 
 const countries = {
-  es: {
-    flag: getAssetPath("media/flags/spain.svg"),
-    name: "Español",
+  es : {
+    flag : getAssetPath("media/flags/spain.svg"),
+    name : "Español",
   },
-  en: {
-    flag: getAssetPath("media/flags/united-states.svg"),
-    name: "Inglés",
+  en : {
+    flag : getAssetPath("media/flags/united-states.svg"),
+    name : "Inglés",
   },
 };
 

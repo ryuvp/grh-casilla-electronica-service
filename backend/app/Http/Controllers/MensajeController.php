@@ -10,6 +10,7 @@ use App\Services\CasillaIdentityService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -317,6 +318,10 @@ class MensajeController extends Controller
 
         $validated = $validator->validated();
         $validated['casilla_origen_id'] = $casillaAuth->id;
+        // Congela la designacion activa del remitente en este preciso envio
+        // (cargo/dependencia con la que actua), independiente de que luego
+        // cambie de designacion o maneje varias en paralelo.
+        $validated['designacion_origen_id'] = $this->casillaIdentity->getAuthDesignacionId($request);
 
         $archivoIds = $validated['archivo_ids'] ?? [];
         $sgdReferencias = $validated['sgd_referencias'] ?? [];
@@ -784,51 +789,61 @@ class MensajeController extends Controller
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        $token = $request->bearerToken() ?: $request->query('token');
-
-        // 2. Cargar Casillas
-        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
-        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
-
-        // 3. Obtener detalles del remitente y destinatario del Auth Service
-        $remitente = [];
-        $destinatario = [];
-        if ($casillaOrigen) {
-            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
-        }
-        if ($casillaDestino) {
-            $destinatario = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
-        }
-
-        // 4. Buscar el documento adjunto de tipo documento_sgd
+        // 2. Buscar el documento adjunto de tipo documento_sgd (para el nombre
+        // de archivo, se necesita en cualquier caso).
         $adjuntoSgd = $mensaje->adjuntos()
             ->where('tipo', 'documento_sgd')
             ->first();
 
-        // 5. Cargar detalles del documento SGD
-        $documento = [
-            'id' => $adjuntoSgd ? $adjuntoSgd->referencia_id : null,
-            'asunto' => $mensaje->asunto,
-            'fecha_envio' => $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A',
-            'fecha_lectura' => $mensaje->leido && $mensaje->read_at ? $mensaje->read_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'PENDIENTE DE LECTURA',
-        ];
+        // 3. El certificado cambia si el mensaje pasa de "pendiente de
+        // lectura" a "leido" (una sola vez), pero es inmutable en adelante:
+        // la clave de cache incluye ese estado para invalidarse justo cuando
+        // corresponde y quedar fija despues.
+        $estadoLectura = $mensaje->leido && $mensaje->read_at
+            ? 'leido-' . $mensaje->read_at->timestamp
+            : 'pendiente';
+        $cacheKey = "certificado_{$mensaje->id}_{$estadoLectura}";
 
-        // 6. Generar el PDF usando DomPDF
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.certificado', [
-            'mensaje' => $mensaje,
-            'casillaOrigen' => $casillaOrigen,
-            'casillaDestino' => $casillaDestino,
-            'remitente' => $remitente,
-            'destinatario' => $destinatario,
-            'documento' => $documento,
-            'hash' => sha1($mensaje->id . $mensaje->created_at)
-        ]);
+        $signedPdfContent = $this->obtenerPdfFirmadoCacheado($cacheKey, function () use ($request, $mensaje, $adjuntoSgd) {
+            $token = $request->bearerToken() ?: $request->query('token');
 
-        $pdfContent = $pdf->output();
-        $signedPdfContent = $this->firmarPdf($pdfContent, 'Certificado de Transmisión y Lectura Electrónica');
+            // Cargar Casillas
+            $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+            $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+
+            // Datos del remitente (cargo/dependencia congelados al momento del
+            // envio) y del destinatario (solo persona: nombre + DNI, sin cargo).
+            // Fallback a la designacion actual de la casilla origen para mensajes
+            // creados antes de que existiera `designacion_origen_id`.
+            $designacionRemitente = $mensaje->designacion_origen_id ?? $casillaOrigen?->designacion_id;
+            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($designacionRemitente, $token);
+            $destinatario = $this->casillaIdentity->resolvePersonaBasica($casillaDestino, $token);
+
+            // Detalles del documento SGD
+            $documento = [
+                'id' => $adjuntoSgd ? $adjuntoSgd->referencia_id : null,
+                'asunto' => $mensaje->asunto,
+                'fecha_envio' => $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A',
+                'fecha_lectura' => $mensaje->leido && $mensaje->read_at ? $mensaje->read_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'PENDIENTE DE LECTURA',
+            ];
+
+            // Generar el PDF usando DomPDF
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.certificado', [
+                'mensaje' => $mensaje,
+                'casillaOrigen' => $casillaOrigen,
+                'casillaDestino' => $casillaDestino,
+                'remitente' => $remitente,
+                'destinatario' => $destinatario,
+                'documento' => $documento,
+                'hash' => sha1($mensaje->id . $mensaje->created_at)
+            ]);
+
+            return $pdf->output();
+        }, 'Certificado de Transmisión y Lectura Electrónica');
+
         return response($signedPdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Certificado_Notificacion_' . ($documento['id'] ?: $mensaje->id) . '.pdf"',
+            'Content-Disposition' => 'inline; filename="Certificado_Notificacion_' . ($adjuntoSgd ? $adjuntoSgd->referencia_id : $mensaje->id) . '.pdf"',
         ]);
     }
 
@@ -849,33 +864,37 @@ class MensajeController extends Controller
             return response()->json(['error' => 'No autorizado'], Response::HTTP_FORBIDDEN);
         }
 
-        $token = $request->bearerToken() ?: $request->query('token');
+        // El envio es un hecho fijo del pasado (fecha_envio = created_at): la
+        // constancia nunca cambia una vez emitida, se puede cachear solo por
+        // mensaje.
+        $cacheKey = "constancia_envio_{$mensaje->id}";
 
-        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
-        $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
+        $signedPdfContent = $this->obtenerPdfFirmadoCacheado($cacheKey, function () use ($request, $mensaje) {
+            $token = $request->bearerToken() ?: $request->query('token');
 
-        $remitente = [];
-        $destinatario = [];
-        if ($casillaOrigen) {
-            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
-        }
-        if ($casillaDestino) {
-            $destinatario = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaDestino->designacion_id, $token);
-        }
+            $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+            $casillaDestino = Casilla::find($mensaje->casilla_destino_id);
 
-        $fecha_envio = $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A';
+            // Fallback a la designacion actual de la casilla origen para mensajes
+            // creados antes de que existiera `designacion_origen_id`.
+            $designacionRemitente = $mensaje->designacion_origen_id ?? $casillaOrigen?->designacion_id;
+            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($designacionRemitente, $token);
+            $destinatario = $this->casillaIdentity->resolvePersonaBasica($casillaDestino, $token);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_envio', [
-            'mensaje' => $mensaje,
-            'casillaOrigen' => $casillaOrigen,
-            'casillaDestino' => $casillaDestino,
-            'remitente' => $remitente,
-            'destinatario' => $destinatario,
-            'fecha_envio' => $fecha_envio
-        ]);
+            $fecha_envio = $mensaje->created_at ? $mensaje->created_at->setTimezone('America/Lima')->format('d/m/Y H:i:s') : 'N/A';
 
-        $pdfContent = $pdf->output();
-        $signedPdfContent = $this->firmarPdf($pdfContent, 'Constancia de Envío de Notificación');
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_envio', [
+                'mensaje' => $mensaje,
+                'casillaOrigen' => $casillaOrigen,
+                'casillaDestino' => $casillaDestino,
+                'remitente' => $remitente,
+                'destinatario' => $destinatario,
+                'fecha_envio' => $fecha_envio
+            ]);
+
+            return $pdf->output();
+        }, 'Constancia de Envío de Notificación');
+
         return response($signedPdfContent, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="Constancia_Envio_' . $mensaje->id . '.pdf"',
@@ -920,32 +939,36 @@ class MensajeController extends Controller
             return response()->json(['error' => 'El mensaje aun no ha sido leido por el destinatario'], Response::HTTP_BAD_REQUEST);
         }
 
-        $token = $request->bearerToken() ?: $request->query('token');
+        // La lectura de UN destinatario concreto ya ocurrio y no cambia: se
+        // cachea por mensaje + casilla lectora (cada destinatario tiene su
+        // propia constancia).
+        $cacheKey = "constancia_lectura_{$mensaje->id}_{$casillaLectora->id}";
 
-        $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
+        $signedPdfContent = $this->obtenerPdfFirmadoCacheado($cacheKey, function () use ($request, $mensaje, $casillaLectora, $readAt) {
+            $token = $request->bearerToken() ?: $request->query('token');
 
-        $remitente = [];
-        $destinatario = [];
-        if ($casillaOrigen) {
-            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaOrigen->designacion_id, $token);
-        }
-        if ($casillaLectora) {
-            $destinatario = $this->casillaIdentity->fetchActorDetailsByDesignacionId($casillaLectora->designacion_id, $token);
-        }
+            $casillaOrigen = Casilla::find($mensaje->casilla_origen_id);
 
-        $fecha_lectura = $readAt->setTimezone('America/Lima')->format('d/m/Y H:i:s');
+            // Fallback a la designacion actual de la casilla origen para mensajes
+            // creados antes de que existiera `designacion_origen_id`.
+            $designacionRemitente = $mensaje->designacion_origen_id ?? $casillaOrigen?->designacion_id;
+            $remitente = $this->casillaIdentity->fetchActorDetailsByDesignacionId($designacionRemitente, $token);
+            $destinatario = $this->casillaIdentity->resolvePersonaBasica($casillaLectora, $token);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_lectura', [
-            'mensaje' => $mensaje,
-            'casillaOrigen' => $casillaOrigen,
-            'casillaDestino' => $casillaLectora,
-            'remitente' => $remitente,
-            'destinatario' => $destinatario,
-            'fecha_lectura' => $fecha_lectura
-        ]);
+            $fecha_lectura = $readAt->setTimezone('America/Lima')->format('d/m/Y H:i:s');
 
-        $pdfContent = $pdf->output();
-        $signedPdfContent = $this->firmarPdf($pdfContent, 'Constancia de Lectura de Notificación');
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.constancia_lectura', [
+                'mensaje' => $mensaje,
+                'casillaOrigen' => $casillaOrigen,
+                'casillaDestino' => $casillaLectora,
+                'remitente' => $remitente,
+                'destinatario' => $destinatario,
+                'fecha_lectura' => $fecha_lectura
+            ]);
+
+            return $pdf->output();
+        }, 'Constancia de Lectura de Notificación');
+
         return response($signedPdfContent, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="Constancia_Lectura_' . $mensaje->id . '.pdf"',
@@ -954,40 +977,29 @@ class MensajeController extends Controller
 
 
     /**
-     * Obtiene los detalles de la designación desde el Auth Service.
+     * Certificado/constancias son documentos inmutables una vez emitidos: el
+     * render con DomPDF + la firma digital criptográfica (parseo de PFX y
+     * reconstrucción página por página con TCPDF/FPDI) son costosos y, sin
+     * caché, se repetían enteros cada vez que alguien volvía a abrir el mismo
+     * PDF. Aquí se persiste el PDF ya firmado en disco (clave = tipo de
+     * documento + mensaje + estado relevante) y, si ya existe, se sirve
+     * directo sin tocar Auth Service ni volver a firmar. `$generarPdfSinFirmar`
+     * solo se invoca en caso de cache-miss, para no pagar tampoco el costo de
+     * resolver remitente/destinatario cuando no hace falta.
      */
-    private function fetchActorDetailsByDesignacionId(int $designacionId, ?string $token): array
+    private function obtenerPdfFirmadoCacheado(string $cacheKey, callable $generarPdfSinFirmar, string $reason): string
     {
-        if (!$token) {
-            return [];
+        $disk = Storage::disk('local');
+        $path = 'pdfs-firmados/' . $cacheKey . '.pdf';
+
+        if ($disk->exists($path)) {
+            return $disk->get($path);
         }
 
-        // Cache corta: los datos de usuario/cargo de una designación cambian con
-        // muy poca frecuencia, y esta función se invoca repetidamente (remitente
-        // + destinatario) al generar certificados/constancias en PDF. No se
-        // cachean fallos/respuestas vacías para no "congelar" un error transitorio.
-        $cacheKey = "casilla_actor_desig_{$designacionId}";
-        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
-        if ($cached) {
-            return $cached;
-        }
+        $signedPdfContent = $this->firmarPdf($generarPdfSinFirmar(), $reason);
+        $disk->put($path, $signedPdfContent);
 
-        $url = env('AUTH_SERVICE_URL') . '/api/designaciones/' . $designacionId . '/usuario-cargo';
-        try {
-            $response = \Illuminate\Support\Facades\Http::withToken($token)->get($url);
-            if ($response->successful()) {
-                $data = $response->json();
-                if (!empty($data)) {
-                    \Illuminate\Support\Facades\Cache::put($cacheKey, $data, 300);
-                }
-
-                return $data;
-            }
-        } catch (\Exception $e) {
-            \Log::error("Error fetching actor details for designacion {$designacionId}: " . $e->getMessage());
-        }
-
-        return [];
+        return $signedPdfContent;
     }
 
     /**

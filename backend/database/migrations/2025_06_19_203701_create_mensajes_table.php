@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('contenido');
             $table->boolean('leido')->default(false);
             $table->unsignedBigInteger('casilla_origen_id')->index();
+            $table->unsignedBigInteger('designacion_origen_id')->nullable();
             $table->unsignedBigInteger('casilla_destino_id')->index();
             $table->dateTime('read_at')->nullable();
             $table->timestamps();

@@ -219,8 +219,10 @@ export const useDesignacionStore = defineStore('designacionStore', {
 
         const casillas = Array.isArray(response?.data?.data) ? response.data.data : []
         const designacionIdPorCasilla = new Map()
+        const casillaPorId = new Map()
 
         casillas.forEach((casilla) => {
+          casillaPorId.set(casilla.id, casilla)
           if (casilla?.designacion_id) {
             this.casillaByDesignacionId[casilla.designacion_id] = casilla
             designacionIdPorCasilla.set(casilla.id, casilla.designacion_id)
@@ -235,6 +237,7 @@ export const useDesignacionStore = defineStore('designacionStore', {
 
           this.actorByCasillaId[casillaId] = {
             casilla_id         : casillaId,
+            casilla_numero     : casillaPorId.get(casillaId)?.numero || null,
             designacion_id     : designacionId,
             usuario_nombre     : resumen.usuario_nombre,
             cargo_nombre       : resumen.cargo_nombre,
@@ -281,6 +284,7 @@ export const useDesignacionStore = defineStore('designacionStore', {
 
           const actor = {
             casilla_id         : casillaId,
+            casilla_numero     : casilla?.numero || null,
             designacion_id     : designacionId,
             usuario_nombre     : resumen.usuario_nombre,
             cargo_nombre       : resumen.cargo_nombre,

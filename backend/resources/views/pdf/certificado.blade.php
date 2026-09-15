@@ -142,19 +142,19 @@
             <table class="grid-table">
                 <tr>
                     <td class="label">Remitente:</td>
-                    <td class="value" style="font-weight: bold; text-transform: uppercase;">{{ data_get($remitente, 'usuario_nombre', 'N/A') }}</td>
+                    <td class="value" style="font-weight: bold; text-transform: uppercase;">{{ data_get($remitente, 'usuario_nombre') ?: 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Cargo / Función:</td>
-                    <td class="value" style="text-transform: uppercase;">{{ data_get($remitente, 'cargo_nombre', 'N/A') }}</td>
+                    <td class="value" style="text-transform: uppercase;">{{ data_get($remitente, 'cargo_nombre') ?: 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Dependencia:</td>
-                    <td class="value" style="text-transform: uppercase;">{{ data_get($remitente, 'dependencia_nombre', 'N/A') }}</td>
+                    <td class="value" style="text-transform: uppercase;">{{ data_get($remitente, 'dependencia_nombre') ?: 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Casilla de Origen:</td>
-                    <td class="value" style="font-weight: bold;">{{ data_get($remitente, 'casilla_numero', 'CAS-' . $casillaOrigen->designacion_id) }}</td>
+                    <td class="value" style="font-weight: bold;">{{ $casillaOrigen->numero ?? 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Fecha y Hora de Envío:</td>
@@ -169,19 +169,15 @@
             <table class="grid-table">
                 <tr>
                     <td class="label">Destinatario:</td>
-                    <td class="value" style="font-weight: bold; text-transform: uppercase;">{{ data_get($destinatario, 'usuario_nombre', 'N/A') }}</td>
+                    <td class="value" style="font-weight: bold; text-transform: uppercase;">{{ data_get($destinatario, 'usuario_nombre') ?: 'N/A' }}</td>
                 </tr>
                 <tr>
-                    <td class="label">Cargo / Función:</td>
-                    <td class="value" style="text-transform: uppercase;">{{ data_get($destinatario, 'cargo_nombre', 'N/A') }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Dependencia:</td>
-                    <td class="value" style="text-transform: uppercase;">{{ data_get($destinatario, 'dependencia_nombre', 'N/A') }}</td>
+                    <td class="label">Nro. Documento:</td>
+                    <td class="value">{{ data_get($destinatario, 'numero_documento') ?: 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Casilla de Destino:</td>
-                    <td class="value" style="font-weight: bold;">{{ data_get($destinatario, 'casilla_numero', 'CAS-' . $casillaDestino->designacion_id) }}</td>
+                    <td class="value" style="font-weight: bold;">{{ $casillaDestino->numero ?? 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Estado de Transmisión:</td>

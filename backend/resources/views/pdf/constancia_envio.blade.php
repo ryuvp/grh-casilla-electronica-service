@@ -164,19 +164,19 @@
             <tr>
                 <td class="label">Estimado(a)</td>
                 <td class="separator">:</td>
-                <td class="value" style="text-transform: uppercase;">{{ data_get($destinatario, 'usuario_nombre', 'N/A') }}</td>
+                <td class="value" style="text-transform: uppercase;">{{ data_get($destinatario, 'usuario_nombre') ?: 'N/A' }}</td>
             </tr>
             <tr>
                 <td class="label">Nro. Documento</td>
                 <td class="separator">:</td>
-                <td class="value">{{ data_get($destinatario, 'numero_documento', 'N/A') }}</td>
+                <td class="value">{{ data_get($destinatario, 'numero_documento') ?: 'N/A' }}</td>
             </tr>
         </table>
     </div>
 
     <div class="content-section">
         <p>
-            La presente constancia acredita el depósito de la notificación del <strong>"{{ $mensaje->asunto }}"</strong> en la Casilla Electrónica por Notificación Electrónica del Gobierno Regional de Huánuco emitida por <strong>{{ data_get($remitente, 'dependencia_nombre', 'N/A') }}</strong>.
+            La presente constancia acredita el depósito de la notificación del <strong>"{{ $mensaje->asunto }}"</strong> en la Casilla Electrónica por Notificación Electrónica del Gobierno Regional de Huánuco emitida por <strong>{{ data_get($remitente, 'dependencia_nombre') ?: data_get($remitente, 'cargo_nombre') ?: data_get($remitente, 'display_name') ?: 'N/A' }}</strong>.
         </p>
         <p>
             Le recordamos que para efectos de acreditar que la notificación se ha realizado válidamente, el Sistema de Casilla Electrónica (SCE) genera automáticamente la constancia de notificación electrónica, en la que consta la fecha y hora exacta del depósito del documento, las mismas que se realizarán en el horario establecido por las leyes vigentes, caso contrario de encontrarse fuera de dicho horario se tomará como fecha valida de notificación el día hábil siguiente.
@@ -185,7 +185,7 @@
             Asimismo, para efectos del cómputo de plazos se informa que éste iniciará desde el día siguiente de efectuada la confirmación de la recepción mediante su acuse de recibo que se genera cuando es leída la presente notificación o desde el día hábil siguiente de transcurrido los cinco (05) primeros días hábiles consecutivos a la presente notificación.
         </p>
         <p>
-            Finalmente, de conformidad con el numeral 5.6 de la Ley N° 31736, Ley que regula la notificación administrativa mediante casilla electrónica se deja constancia que el SCE ha remitido una comunicación al correo electrónico que a la fecha se encuentra registrado: <strong>{{ data_get($destinatario, 'email', 'N/A') }}</strong>, y, vía mensaje de texto, al teléfono celular: <strong>{{ data_get($destinatario, 'telefono', 'N/A') }}</strong>, los mismos que usted declaró.
+            Finalmente, de conformidad con el numeral 5.6 de la Ley N° 31736, Ley que regula la notificación administrativa mediante casilla electrónica se deja constancia que el SCE ha remitido una comunicación al correo electrónico que a la fecha se encuentra registrado: <strong>{{ data_get($destinatario, 'email') ?: 'N/A' }}</strong>, y, vía mensaje de texto, al teléfono celular: <strong>{{ data_get($destinatario, 'telefono') ?: 'N/A' }}</strong>, los mismos que usted declaró.
         </p>
     </div>
 

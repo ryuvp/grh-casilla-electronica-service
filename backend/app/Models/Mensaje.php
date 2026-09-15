@@ -31,6 +31,7 @@ class Mensaje extends Model
         'archivado',
         'casilla_origen_id',
         'casilla_destino_id',
+        'designacion_origen_id',
         'read_at',
     ];
 

@@ -64,6 +64,21 @@ class CasillaIdentityService
     }
 
     /**
+     * Resuelve la designacion actualmente activa del solicitante autenticado
+     * (la que tiene seleccionada en esta sesion/peticion puntual). Se usa
+     * unicamente para congelar el contexto de cargo/dependencia de un
+     * remitente en el momento exacto de un envio (`Mensaje::designacion_origen_id`);
+     * nunca para resolver identidad de la casilla, que es siempre por
+     * `usuario_id`.
+     */
+    public function getAuthDesignacionId(Request $request): ?int
+    {
+        $id = data_get($this->getAuthUser($request), 'designacion_logeada.id');
+
+        return is_numeric($id) && (int) $id > 0 ? (int) $id : null;
+    }
+
+    /**
      * Resuelve la casilla activa de la PERSONA autenticada. Si todavia no
      * tiene una (p.ej. un ciudadano al que recien se le otorgo el rol de
      * Casilla en Auth Service, o un trabajador al que nunca se le habia
@@ -205,14 +220,74 @@ class CasillaIdentityService
     }
 
     /**
+     * Resuelve datos basicos (nombre, DNI, contacto) de la PERSONA duena de
+     * una casilla, sin pasar por ninguna designacion: se usa para mostrar al
+     * destinatario en las constancias PDF, ya que un destinatario es siempre
+     * una persona (interna o externa) y nunca un cargo. Si la casilla ya
+     * tiene `usuario_id`, se consulta a Auth Service por ese id; si todavia
+     * es una persona externa sin cuenta, se usan los datos ya guardados en la
+     * propia fila de `casillas` (nombre_externo/dni) sin llamadas HTTP.
+     */
+    public function resolvePersonaBasica(?Casilla $casilla, ?string $token): array
+    {
+        if (!$casilla) {
+            return [];
+        }
+
+        $fallback = [
+            'usuario_nombre' => $casilla->nombre_externo,
+            'numero_documento' => $casilla->dni,
+        ];
+
+        if (!$casilla->usuario_id || !$token) {
+            return $fallback;
+        }
+
+        $cacheKey = "casilla_persona_usr_{$casilla->usuario_id}";
+        $cached = Cache::get($cacheKey);
+        if ($cached) {
+            return $cached;
+        }
+
+        // Se usa el endpoint de "resumen-basico" (no el show() completo de
+        // usuarios) porque este ultimo exige designacion activa en Auth
+        // Service, y el destinatario de una notificacion suele ser un
+        // ciudadano/persona natural sin ninguna: si es él mismo viendo su
+        // propia constancia, no puede tener una designacion activa.
+        $url = env('AUTH_SERVICE_URL') . '/api/usuarios/' . $casilla->usuario_id . '/resumen-basico';
+        try {
+            $response = Http::withToken($token)->timeout(5)->get($url);
+            if ($response->successful()) {
+                $data = $response->json('data') ?? $response->json();
+                $nombreCompleto = trim(($data['nombre'] ?? '') . ' ' . ($data['apellido'] ?? ''));
+
+                $result = [
+                    'usuario_nombre' => $nombreCompleto !== '' ? $nombreCompleto : $fallback['usuario_nombre'],
+                    'numero_documento' => $data['numero_documento'] ?? $fallback['numero_documento'],
+                    'email' => $data['email'] ?? null,
+                    'telefono' => $data['telefono'] ?? null,
+                ];
+                Cache::put($cacheKey, $result, 300);
+
+                return $result;
+            }
+        } catch (\Exception $e) {
+            Log::error("Error obteniendo datos de persona para usuario {$casilla->usuario_id}: " . $e->getMessage());
+        }
+
+        return $fallback;
+    }
+
+    /**
      * Obtiene los detalles (usuario_id, nombre, DNI, cargo) de la persona
      * detras de una designacion, consultando Auth Service. Se usa tanto para
-     * resolver identidad como para mostrar remitente/destinatario en los
-     * certificados PDF.
+     * resolver identidad como para mostrar al REMITENTE (cargo/dependencia)
+     * en los certificados PDF, congelado a la designacion que tenia activa
+     * en el momento del envio (`Mensaje::designacion_origen_id`).
      */
-    public function fetchActorDetailsByDesignacionId(int $designacionId, ?string $token): array
+    public function fetchActorDetailsByDesignacionId(?int $designacionId, ?string $token): array
     {
-        if (!$token) {
+        if (!$designacionId || !$token) {
             return [];
         }
 
@@ -228,7 +303,7 @@ class CasillaIdentityService
 
         $url = env('AUTH_SERVICE_URL') . '/api/designaciones/' . $designacionId . '/usuario-cargo';
         try {
-            $response = Http::withToken($token)->get($url);
+            $response = Http::withToken($token)->timeout(5)->get($url);
             if ($response->successful()) {
                 $data = $response->json();
                 if (!empty($data)) {

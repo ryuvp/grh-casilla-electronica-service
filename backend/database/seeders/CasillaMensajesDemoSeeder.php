@@ -42,6 +42,7 @@ class CasillaMensajesDemoSeeder extends Seeder
                 'destacado' => true,
                 'archivado' => false,
                 'casilla_origen_id' => $casillaAdmin->id,
+                'designacion_origen_id' => $casillaAdmin->designacion_id,
                 'casilla_destino_id' => $casillaKevin->id,
                 'read_at' => null,
             ]
@@ -56,6 +57,7 @@ class CasillaMensajesDemoSeeder extends Seeder
                 'destacado' => false,
                 'archivado' => false,
                 'casilla_origen_id' => $casillaAdmin->id,
+                'designacion_origen_id' => $casillaAdmin->designacion_id,
                 'casilla_destino_id' => $casillaKevin->id,
                 'read_at' => null,
             ]

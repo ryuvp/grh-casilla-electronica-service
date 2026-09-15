@@ -70,7 +70,10 @@
 
       <!-- 1. Contenido -->
       <div class="ce-notif-section-label">Contenido de la Cédula / Proveído:</div>
-      <div class="ce-notif-content" v-html="mensaje.contenido || '<em>Sin contenido</em>'"></div>
+      <div class="ce-notif-content">
+        <template v-if="mensaje.contenido">{{ mensaje.contenido }}</template>
+        <em v-else>Sin contenido</em>
+      </div>
 
       <!-- 2. Adjuntos (Gmail-style) – entre contenido e integridad -->
       <template v-if="mensaje.adjuntos?.length">
@@ -104,7 +107,7 @@
       </div>
       <div class="ce-att-grid">
         <!-- Constancia de Envío -->
-        <div class="ce-att-card" @click="descargarConstanciaEnvio" title="Constancia de Envío">
+        <div class="ce-att-card" title="Constancia de Envío" @click="descargarConstanciaEnvio">
           <div class="ce-att-preview">
             <span class="ce-att-preview-label">PDF</span>
           </div>
@@ -128,7 +131,7 @@
           <div class="ce-att-foot">
             <span class="ce-att-name">Constancia de Lectura</span>
             <span class="ce-att-meta">{{ mensaje.leido ? 'PDF · Disponible' : 'Pendiente de lectura' }}</span>
-            <span class="ce-att-dl" v-if="mensaje.leido"><i class="bi bi-download"></i> Descargar</span>
+            <span v-if="mensaje.leido" class="ce-att-dl"><i class="bi bi-download"></i> Descargar</span>
           </div>
         </div>
       </div>
@@ -180,7 +183,7 @@ const authStore        = useAuthStore()
 const mensajesStore    = useMensajesStore()
 const deTexto          = ref('Cargando...')
 const paraTexto        = ref('Cargando...')
-const casillaDestinoId = ref(null)
+const casillaDestinoNumero = ref(null)
 
 const canManageMensaje = computed(() => {
   const names = authStore.permisosAccion.map(p => p.name || p.nombre || '')
@@ -196,8 +199,7 @@ const codigoMensaje = computed(() => {
 })
 
 const casillaCodigo = computed(() => {
-  const id = casillaDestinoId.value || props.mensaje?.casilla_destino_id
-  return id ? `CAS-${new Date(props.mensaje?.created_at).getFullYear()}-${String(id).padStart(4, '0')}` : paraTexto.value
+  return casillaDestinoNumero.value || paraTexto.value
 })
 
 const hashMensaje = computed(() => {
@@ -210,14 +212,14 @@ const hashMensaje = computed(() => {
 
 const prioridadTexto = computed(() => ({ 1: 'Alta', 2: 'Media', 3: 'Baja' }[props.mensaje?.prioridad] ?? 'Normal'))
 const prioridadClass = computed(() => ({
-  1: 'ce-priority-tag--alta',
-  2: 'ce-priority-tag--media',
-  3: 'ce-priority-tag--baja',
+  1 : 'ce-priority-tag--alta',
+  2 : 'ce-priority-tag--media',
+  3 : 'ce-priority-tag--baja',
 }[props.mensaje?.prioridad] ?? 'ce-priority-tag--nd'))
 const prioridadIcon = computed(() => ({
-  1: 'bi bi-exclamation-circle-fill',
-  2: 'bi bi-dash-circle-fill',
-  3: 'bi bi-check-circle-fill',
+  1 : 'bi bi-exclamation-circle-fill',
+  2 : 'bi bi-dash-circle-fill',
+  3 : 'bi bi-check-circle-fill',
 }[props.mensaje?.prioridad] ?? 'bi bi-circle'))
 
 async function cargarActores() {
@@ -228,7 +230,7 @@ async function cargarActores() {
     designacionStore.resolveActorByCasillaId(msg.casilla_destino_id),
   ])
   if (props.mensaje?.id !== msg.id) return
-  casillaDestinoId.value = msg.casilla_destino_id
+  casillaDestinoNumero.value = destino?.casilla_numero || null
   deTexto.value   = origen?.display_name  || `Casilla ${msg.casilla_origen_id}`
   paraTexto.value = destino?.display_name || `Casilla ${msg.casilla_destino_id}`
 }
@@ -269,9 +271,9 @@ const baseApi = () => import.meta.env.VITE_API_URL || 'http://localhost:8089/api
 function descargarConstanciaEnvio() {
   if (!props.mensaje?.id) return
   abrirPdfEnPopup({
-    url: `${baseApi()}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${JwtService.getToken()}`,
-    nombre: 'Constancia de Envío',
-    id: 'constancia-envio'
+    url    : `${baseApi()}/mensajes/${props.mensaje.id}/constancia-envio-pdf?token=${JwtService.getToken()}`,
+    nombre : 'Constancia de Envío',
+    id     : 'constancia-envio'
   })
 }
 function descargarConstanciaLectura() {
@@ -281,9 +283,9 @@ function descargarConstanciaLectura() {
     return
   }
   abrirPdfEnPopup({
-    url: `${baseApi()}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${JwtService.getToken()}`,
-    nombre: 'Constancia de Lectura',
-    id: 'constancia-lectura'
+    url    : `${baseApi()}/mensajes/${props.mensaje.id}/constancia-lectura-pdf?token=${JwtService.getToken()}`,
+    nombre : 'Constancia de Lectura',
+    id     : 'constancia-lectura'
   })
 }
 </script>

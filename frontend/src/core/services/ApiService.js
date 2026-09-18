@@ -40,10 +40,16 @@ export default function createApiService(baseURL) {
   // Interceptor de respuesta
   instance.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
       if (error.response) {
         switch (error.response.status) {
         case 401:
+          // 401 justo despues de un login/handshake: reintenta una sola vez antes de rendirse.
+          if (JwtService.shouldRetryUnauthorized(error.config)) {
+            error.config._freshTokenRetry = true;
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            return instance(error.config);
+          }
           console.warn('Token inválido o expirado');
           break;
         case 403:

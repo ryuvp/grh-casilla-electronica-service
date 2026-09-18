@@ -367,6 +367,9 @@ const useAuthStore = defineStore('auth', {
             window.opener.postMessage({ type: "LOGOUT" }, allowedOrigin);
           }
           window.close();
+        } else if (localOnly) {
+          // Sesion vencida/invalida: llevar al login en vez de dejar una pagina en blanco.
+          window.location.replace(allowedOrigin + '/login');
         } else {
           window.location.replace('about:blank');
         }

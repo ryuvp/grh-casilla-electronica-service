@@ -4,6 +4,7 @@ import "@/core/plugins/prismjs";
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
+import JwtService from '@/core/services/JwtService';
 import { createPinia } from 'pinia';
 
 // Plugins globales de UI y validacion.
@@ -61,6 +62,9 @@ import ElementPlus from 'element-plus';
 import i18n from '@/core/plugins/i18n';
 
 // Registra stores y plugins base.
+// Descarta un token vencido antes de que router/stores lo lean: evita un 401 y el cierre de sesion al abrir.
+JwtService.purgeIfExpired();
+
 const pinia = createPinia();
 app.use(pinia);
 app.use(router);

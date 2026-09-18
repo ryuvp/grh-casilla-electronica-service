@@ -16,7 +16,7 @@ use App\Http\Controllers\MensajeController;
 |
 */
 
-Route::get('/health', function () {
+Route::middleware('throttle:api')->get('/health', function () {
     $payload = [
         'status' => 'ok',
         'service' => 'casilla-electronica-service',
@@ -32,7 +32,10 @@ Route::get('/health', function () {
     return response()->json($payload);
 });
 
-Route::middleware('remoteauth')->group(function () {
+// 'remoteauth' primero: resuelve auth_user antes de que 'throttle:api' evalúe la
+// clave del limiter, para que el cupo de 600 req/min se cuente por usuario real
+// y no por la IP compartida de la sede (ver RateLimiter::for('api')).
+Route::middleware(['remoteauth', 'throttle:api'])->group(function () {
     Route::apiResource('/casillas', CasillaController::class);
     Route::get('/mensajes/verificar-envios', [MensajeController::class, 'verificarEnvios']);
     Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);

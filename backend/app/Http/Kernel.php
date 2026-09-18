@@ -40,7 +40,9 @@ class Kernel extends HttpKernel
 
         'api' => [
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            // El throttle:api NO va aquí: correría antes que 'remoteauth' y el limiter
+            // siempre caería al fallback por IP. Se aplica explícitamente después de
+            // 'remoteauth' en routes/api.php para que ya exista auth_user al evaluarlo.
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];

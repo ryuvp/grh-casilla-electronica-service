@@ -25,7 +25,13 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(600)->by($request->user()?->id ?: $request->ip());
+            // 'remoteauth' no usa el guard nativo de Laravel: no llama a Auth::login(),
+            // solo hace $request->merge(['auth_user' => ...]). Por eso $request->user()
+            // siempre es null aquí y este limiter caía siempre al fallback por IP,
+            // agrupando a todos los usuarios de una misma sede (NAT) en un solo cupo.
+            $authUserId = $request->get('auth_user')['id'] ?? null;
+
+            return Limit::perMinute(600)->by($authUserId ?: $request->ip());
         });
 
         $this->routes(function () {

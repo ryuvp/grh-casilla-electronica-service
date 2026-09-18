@@ -88,24 +88,61 @@ export const useDesignacionStore = defineStore('designacionStore', {
           }
         })
 
-        const resolved = await Promise.all(
-          candidatos.map(async (item) => {
-            const casilla = await this.fetchActiveCasillaByDesignacionId(item.designacion_id)
-            if (!casilla?.id) return null
-
-            return {
-              casillaId       : casilla.id,
-              casillaNumero   : casilla.numero,
-              designacionId   : item.designacion_id,
-              usuarioNombre   : item.usuario_nombre,
-              numeroDocumento : item.numero_documento,
-              cargoNombre     : item.cargo_nombre,
-              // La casilla es de la persona: se identifica por su DNI, no por
-              // un codigo tecnico interno/externo.
-              label           : `${item.usuario_nombre}${item.cargo_nombre ? ` - ${item.cargo_nombre}` : ''}${item.numero_documento ? ` - Casilla DNI ${item.numero_documento}` : ''}`,
-            }
-          })
+        // Lote único en vez de una petición GET /casillas por candidato: mismo
+        // patrón de filtro IN que resolveActorsByCasillaIds, más abajo en este
+        // mismo store.
+        const designacionIds = [...new Set(
+          candidatos.map((item) => item?.designacion_id).filter(Boolean)
+        )]
+        const idsAResolver = designacionIds.filter(
+          (id) => !Object.prototype.hasOwnProperty.call(this.casillaByDesignacionId, id)
         )
+
+        if (idsAResolver.length) {
+          try {
+            const casillasResponse = await ApiCasillaService.get('/casillas', {
+              designacion_id : ['in', ...idsAResolver],
+              activo         : true,
+              per_page       : Math.min(Math.max(idsAResolver.length, 10), 100),
+            })
+
+            const casillas = Array.isArray(casillasResponse?.data?.data) ? casillasResponse.data.data : []
+            const casillaPorDesignacion = new Map()
+            casillas.forEach((casilla) => {
+              if (casilla?.designacion_id) {
+                casillaPorDesignacion.set(Number(casilla.designacion_id), casilla)
+              }
+            })
+
+            idsAResolver.forEach((id) => {
+              this.casillaByDesignacionId[id] = casillaPorDesignacion.get(Number(id)) || null
+            })
+          } catch (error) {
+            console.error('Error obteniendo casillas activas en lote:', error)
+            idsAResolver.forEach((id) => {
+              if (!Object.prototype.hasOwnProperty.call(this.casillaByDesignacionId, id)) {
+                this.casillaByDesignacionId[id] = null
+              }
+            })
+          }
+        }
+
+        const resolved = candidatos.map((item) => {
+          const casilla = this.casillaByDesignacionId[item.designacion_id]
+          if (!casilla?.id) return null
+
+          return {
+            casillaId       : casilla.id,
+            casillaNumero   : casilla.numero,
+            designacionId   : item.designacion_id,
+            usuarioNombre   : item.usuario_nombre,
+            numeroDocumento : item.numero_documento,
+            cargoNombre     : item.cargo_nombre,
+            // La casilla es de la persona: se identifica por su DNI, no por
+            // un codigo tecnico interno/externo.
+            label           : `${item.usuario_nombre}${item.cargo_nombre ? ` - ${item.cargo_nombre}` : ''}${item.numero_documento ? ` - Casilla DNI ${item.numero_documento}` : ''}`,
+          }
+        })
 
         return resolved.filter(Boolean)
       } catch (error) {

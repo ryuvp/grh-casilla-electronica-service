@@ -43,12 +43,13 @@ const getCanonicalPermissions = (state) => {
 const useAuthStore = defineStore('auth', {
   // Estado base de sesion y cache de validacion de casilla.
   state : () => ({
-    isAuthenticated : JwtService.loggedIn() || false,
-    userData        : JSON.parse(JwtService.getUserLogged()) || null,
-    serviceName     : import.meta.env.VITE_SERVICE_NAME,
-    isAuthReady     : false,
-    hasCasilla      : null,
-    casillaChecked  : false,
+    isAuthenticated  : JwtService.loggedIn() || false,
+    userData         : JSON.parse(JwtService.getUserLogged()) || null,
+    serviceName      : import.meta.env.VITE_SERVICE_NAME,
+    isAuthReady      : false,
+    hasCasilla       : null,
+    casillaChecked   : false,
+    sesionInvalidada : false,
   }),
 
   getters : {
@@ -296,17 +297,28 @@ const useAuthStore = defineStore('auth', {
     },
 
     // Valida token remoto y sincroniza datos de usuario en el store (optimizado con caché stale-while-revalidate).
-    async validateToken() {
-      const hasCache = this.isAuthenticated && this.userData;
+    // `force` omite la cache stale-while-revalidate y valida contra el backend (p. ej. tras un refresh sin padre).
+    async validateToken(force = false) {
+      if (force && this.validationRequest) {
+        await this.validationRequest;
+      }
+      const hasCache = !force && this.isAuthenticated && this.userData;
       if (hasCache) {
         if (!this.validationRequest) {
           this.validationRequest = (async () => {
+            const tokenUsado = JwtService.getToken();
             try {
               const { data } = await ApiService.get('/usuario');
               JwtService.saveUserLogged(data);
               this.$patch({ isAuthenticated: true, userData: data });
             } catch (error) {
-              console.warn("Revalidación silenciosa en background falló:", error?.message);
+              // 401 con el token vigente: la sesion fue cerrada/revocada. App.vue decide como salir
+              // (no se cierra aqui para no cortar un handshake pendiente con un token nuevo).
+              if (error?.response?.status === 401 && JwtService.getToken() === tokenUsado) {
+                this.sesionInvalidada = true;
+              } else {
+                console.warn("Revalidación silenciosa en background falló:", error?.message);
+              }
             } finally {
               this.validationRequest = null;
             }
@@ -354,11 +366,11 @@ const useAuthStore = defineStore('auth', {
         JwtService.destroyUserLogged();
 
         this.$patch({
-          isAuthenticated    : false,
-          userData           : null,
-          isAuthReady        : false,
-          hasCasilla         : false,
-          casillaChecked     : false,
+          isAuthenticated : false,
+          userData        : null,
+          isAuthReady     : false,
+          hasCasilla      : false,
+          casillaChecked  : false,
         });
 
         // Notificar al padre si existe o cerrar ventana

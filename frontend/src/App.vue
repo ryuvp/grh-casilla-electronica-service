@@ -4,7 +4,7 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeMount, onMounted, onUnmounted, ref } from "vue";
+import { nextTick, onBeforeMount, onMounted, onUnmounted, ref, watch } from "vue";
 import { RouterView, useRouter } from "vue-router";
 
 import { useConfigStore } from "@/stores/config";
@@ -25,7 +25,25 @@ const router = useRouter();
 const comunicadosOverlayRef = ref(null);
 
 const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
+const HANDSHAKE_TIMEOUT_MS = 3000;
 let handshakeCompleted = false;
+let bootstrapResuelto = false;
+const esRecarga = () => performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
+
+// Valida el token guardado contra el backend (sin padre) o sale si no hay sesion.
+const validarSesionGuardada = async () => {
+  bootstrapResuelto = true;
+  if (!JwtService.haveToken()) {
+    salirPorSesionInvalida();
+    return;
+  }
+  const result = await authStore.validateToken(true);
+  if (result === true || result?.success) {
+    await finalizarInicioAutenticado();
+  } else {
+    salirPorSesionInvalida();
+  }
+};
 
 // Evita repetir comunicados al navegar dentro de Casilla en la misma carga de la app.
 // Al recargar el navegador vuelve a false y permite recurrencias como cada_inicio_sesion.
@@ -57,8 +75,25 @@ async function finalizarInicioAutenticado() {
   await cargarComunicadosSiCorresponde();
 }
 
+// Sesion cerrada en el auth: cerrar la ventana hija o, si no es posible, ir al login.
+const salirPorSesionInvalida = () => {
+  authStore.setAuthReady(true);
+  if (window.opener && !window.opener.closed) {
+    window.close();
+  } else {
+    window.location.replace(allowedOrigin + "/login");
+  }
+};
+
 const handleMessage = async (event) => {
   if (event.origin !== allowedOrigin) return;
+
+  // El auth cerro sesion: limpiar la sesion local (sin llamar al backend, el token ya esta revocado).
+  if (event.data?.type === 'LOGOUT') {
+    await authStore.logout(true);
+    salirPorSesionInvalida();
+    return;
+  }
 
   if (event.data?.type === 'USER_UPDATED' && event.data.user) {
     JwtService.saveUserLogged(event.data.user);
@@ -124,6 +159,19 @@ const handleCerrarHijas = (event) => {
   }
 };
 
+// Revalidacion en segundo plano con 401: la sesion fue cerrada/revocada. Si se espera el
+// handshake del padre (primera apertura) se ignora, porque traera un token nuevo.
+watch(() => authStore.sesionInvalidada, async (invalida) => {
+  if (!invalida) return;
+  authStore.sesionInvalidada = false;
+
+  const esperandoPadre = !!window.opener && !window.opener.closed && !handshakeCompleted && !bootstrapResuelto;
+  if (esperandoPadre) return;
+
+  await authStore.logout(true);
+  salirPorSesionInvalida();
+});
+
 onBeforeMount(() => {
   configStore.overrideLayoutConfig();
   themeStore.setThemeMode(themeConfigValue.value);
@@ -140,7 +188,17 @@ onMounted(() => {
     }
 
     if (tieneOrigen) {
-      // Esperando autenticación desde la ventana principal
+      // Refresh con sesion guardada: validarla de inmediato en vez de esperar al padre
+      // (si el auth ya cerro sesion, nadie responderia al handshake).
+      if (tokenExiste && esRecarga()) {
+        validarSesionGuardada();
+      } else {
+        // Primera apertura: se espera el handshake; si el padre no responde, se valida/sale.
+        setTimeout(() => {
+          if (handshakeCompleted || bootstrapResuelto) return;
+          validarSesionGuardada();
+        }, HANDSHAKE_TIMEOUT_MS);
+      }
     } else if (tokenExiste) {
       try {
         const result = await authStore.validateToken();

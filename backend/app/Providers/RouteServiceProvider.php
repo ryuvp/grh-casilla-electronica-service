@@ -30,8 +30,10 @@ class RouteServiceProvider extends ServiceProvider
             // siempre es null aquí y este limiter caía siempre al fallback por IP,
             // agrupando a todos los usuarios de una misma sede (NAT) en un solo cupo.
             $authUserId = $request->get('auth_user')['id'] ?? null;
+            // El prefijo 'casilla:' aísla el contador de este servicio: si comparte Redis y prefijo de
+            // caché con otro servicio, un mismo usuario no comparte el cupo entre ambos.
 
-            return Limit::perMinute(600)->by($authUserId ?: $request->ip());
+            return Limit::perMinute(600)->by('casilla:' . ($authUserId ?: $request->ip()));
         });
 
         $this->routes(function () {

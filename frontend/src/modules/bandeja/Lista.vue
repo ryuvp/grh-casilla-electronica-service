@@ -26,13 +26,19 @@
         :key="item.id"
         class="ce-gmail-row"
         :class="{
-          'ce-gmail-row--unread'   : !item.leido,
+          'ce-gmail-row--unread'   : !isEnviados && !item.leido,
           'ce-gmail-row--selected' : isSelected(item),
         }"
         @click="selectItem(item)"
       >
+        <!-- Enviados: icono fijo de envio (destacar/archivar es solo del destinatario) -->
+        <div v-if="isEnviados" class="ce-col-star ce-col-star--sent" title="Enviado">
+          <i class="bi bi-send"></i>
+        </div>
+
         <!-- Star -->
         <div
+          v-else
           class="ce-col-star"
           :class="{ 'ce-col-star--active': item.destacado }"
           :title="item.destacado ? 'Destacado' : 'Sin destacar'"
@@ -41,8 +47,8 @@
           <i :class="item.destacado ? 'bi bi-star-fill' : 'bi bi-star'"></i>
         </div>
 
-        <!-- Remitente -->
-        <div class="ce-col-sender" :title="getDeTexto(item)">{{ getDeTexto(item) }}</div>
+        <!-- Remitente (entrada) o destinatarios (enviados) -->
+        <div class="ce-col-sender" :title="getDeTitle(item)">{{ getDeTexto(item) }}</div>
 
         <!-- Asunto + preview (ocupa el espacio restante) -->
         <div class="ce-col-subject-wrap">
@@ -52,6 +58,9 @@
 
         <!-- Chips -->
         <div class="ce-col-chips">
+          <span v-if="isEnviados" class="ce-row-chip" :class="estadoLectura(item).clase">
+            {{ estadoLectura(item).texto }}
+          </span>
           <span v-if="item.prioridad === 1" class="ce-row-chip ce-row-chip--red">Alta</span>
           <span v-else-if="item.prioridad === 2" class="ce-row-chip ce-row-chip--yellow">Media</span>
           <span v-if="item.adjuntos?.length" class="ce-row-chip ce-row-chip--clip">
@@ -101,10 +110,13 @@ const props = defineProps({
   mensajes   : { type: Array,  required: true },
   pagination : { type: Object, required: true },
   selected   : { type: Object, default: null },
+  trayType   : { type: String, default: 'entrada' },
 })
 const emit = defineEmits(['seleccionar', 'page-change', 'items-per-page-change', 'sort'])
 
 const designacionStore   = useDesignacionStore()
+const isEnviados         = computed(() => props.trayType === 'enviados')
+// Nombres de la contraparte por mensaje: remitente (entrada) o destinatarios (enviados).
 const deTextoByMensajeId = ref({})
 let cargaActual          = 0
 
@@ -135,7 +147,28 @@ const goToPage    = (page) => {
   if (page < 1 || page > totalPages.value) return
   emit('page-change', page)
 }
-const getDeTexto  = (item) => deTextoByMensajeId.value[item.id] || `Casilla ${item.casilla_origen_id}`
+// Casillas de la contraparte: en enviados, todos los destinatarios del envio.
+const contraparteIds = (item) => {
+  if (!isEnviados.value) return [item.casilla_origen_id].filter(Boolean)
+  const ids = item.casilla_destino_ids?.length ? item.casilla_destino_ids : [item.casilla_destino_id]
+  return ids.filter(Boolean)
+}
+const nombresDe = (item) => deTextoByMensajeId.value[item.id] || contraparteIds(item).map(id => `Casilla ${id}`)
+const getDeTexto = (item) => {
+  const nombres = nombresDe(item)
+  if (!isEnviados.value) return nombres[0] || ''
+  const extra = nombres.length > 1 ? ` +${nombres.length - 1}` : ''
+  return `Para: ${nombres[0] || ''}${extra}`
+}
+const getDeTitle = (item) => (isEnviados.value ? 'Para: ' : '') + nombresDe(item).join(', ')
+// Estado de lectura del envio: la lectura es individual por destinatario.
+const estadoLectura = (item) => {
+  const dests  = item.destinatarios?.length ? item.destinatarios : [{ leido: item.leido }]
+  const leidos = dests.filter(d => d.leido).length
+  if (!leidos)                  return { texto: 'Sin leer', clase: 'ce-row-chip--gray' }
+  if (leidos === dests.length)  return { texto: 'Leído', clase: 'ce-row-chip--green' }
+  return { texto: `Leído ${leidos}/${dests.length}`, clase: 'ce-row-chip--blue' }
+}
 const previewTexto = (item) => {
   if (!item.contenido) return ''
   return item.contenido.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
@@ -149,22 +182,21 @@ const formatDateShort = (d) => {
   return date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })
 }
 
-async function cargarRemitentes(mensajes = []) {
-  const validos = mensajes.filter(m => m?.id && m?.casilla_origen_id)
+async function cargarContrapartes(mensajes = []) {
+  const validos = mensajes.filter(m => m?.id && contraparteIds(m).length)
   if (!validos.length) { deTextoByMensajeId.value = {}; return }
   const id = ++cargaActual
   // Un solo lote (máx. 2 peticiones totales) en vez de 2 peticiones POR mensaje.
-  const casillaIds = [...new Set(validos.map(m => m.casilla_origen_id))]
+  const casillaIds = [...new Set(validos.flatMap(contraparteIds))]
   await designacionStore.resolveActorsByCasillaIds(casillaIds)
   if (id !== cargaActual) return
   const map = {}
   validos.forEach((m) => {
-    const actor = designacionStore.actorByCasillaId[m.casilla_origen_id]
-    map[m.id] = actor?.usuario_nombre || `Casilla ${m.casilla_origen_id}`
+    map[m.id] = contraparteIds(m).map(cid => designacionStore.actorByCasillaId[cid]?.usuario_nombre || `Casilla ${cid}`)
   })
   deTextoByMensajeId.value = map
 }
 
-watch(() => props.mensajes.map(m => `${m.id}:${m.casilla_origen_id}`).join('|'),
-  () => cargarRemitentes(props.mensajes), { immediate: true })
+watch(() => props.trayType + '|' + props.mensajes.map(m => `${m.id}:${m.casilla_origen_id}:${contraparteIds(m).join(',')}`).join('|'),
+  () => cargarContrapartes(props.mensajes), { immediate: true })
 </script>

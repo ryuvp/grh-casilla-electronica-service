@@ -44,7 +44,22 @@
       <!-- Metadata -->
       <table class="ce-meta-table">
         <tbody>
-          <tr>
+          <tr v-if="isEnviados">
+            <td>Destinatarios</td>
+            <td>
+              <div
+                v-for="d in destinatariosDetalle"
+                :key="d.casillaId"
+                class="d-flex align-items-center flex-wrap gap-2 py-1"
+              >
+                <span>{{ d.nombre }}</span>
+                <span class="ce-row-chip" :class="d.leido ? 'ce-row-chip--green' : 'ce-row-chip--gray'">
+                  {{ d.leido ? 'Leído' + (d.readAt ? ' · ' + formatFecha(d.readAt) : '') : 'Sin leer' }}
+                </span>
+              </div>
+            </td>
+          </tr>
+          <tr v-else>
             <td>Remitente</td>
             <td>{{ deTexto }}</td>
           </tr>
@@ -52,7 +67,7 @@
             <td>Fecha Depósito</td>
             <td>{{ formatFecha(mensaje.created_at) }}</td>
           </tr>
-          <tr>
+          <tr v-if="!isEnviados">
             <td>Casilla Destino</td>
             <td><span class="ce-casilla-tag">{{ casillaCodigo }}</span></td>
           </tr>
@@ -184,6 +199,8 @@ const mensajesStore    = useMensajesStore()
 const deTexto          = ref('Cargando...')
 const paraTexto        = ref('Cargando...')
 const casillaDestinoNumero = ref(null)
+const destinatariosDetalle = ref([])
+const isEnviados = computed(() => props.trayType === 'enviados')
 
 const canManageMensaje = computed(() => {
   const names = authStore.permisosAccion.map(p => p.name || p.nombre || '')
@@ -224,7 +241,27 @@ const prioridadIcon = computed(() => ({
 
 async function cargarActores() {
   const msg = props.mensaje
-  if (!msg) { deTexto.value = '—'; paraTexto.value = '—'; return }
+  if (!msg) { deTexto.value = '—'; paraTexto.value = '—'; destinatariosDetalle.value = []; return }
+
+  // Enviados: todos los destinatarios del envio, cada uno con su propio estado de lectura.
+  if (isEnviados.value) {
+    const ids = (msg.casilla_destino_ids?.length ? msg.casilla_destino_ids : [msg.casilla_destino_id]).filter(Boolean)
+    await designacionStore.resolveActorsByCasillaIds(ids)
+    if (props.mensaje?.id !== msg.id) return
+    const lectura = new Map((msg.destinatarios || []).map(d => [d.casilla_id, d]))
+    destinatariosDetalle.value = ids.map((casillaId) => {
+      const actor = designacionStore.actorByCasillaId[casillaId]
+      const d     = lectura.get(casillaId)
+      return {
+        casillaId,
+        nombre : actor?.display_name || `Casilla ${casillaId}`,
+        leido  : d ? !!d.leido : !!msg.leido,
+        readAt : d?.read_at || (d ? null : msg.read_at),
+      }
+    })
+    return
+  }
+
   const [origen, destino] = await Promise.all([
     designacionStore.resolveActorByCasillaId(msg.casilla_origen_id),
     designacionStore.resolveActorByCasillaId(msg.casilla_destino_id),

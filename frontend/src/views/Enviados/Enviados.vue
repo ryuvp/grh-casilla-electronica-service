@@ -1,7 +1,8 @@
 <template>
-  <Enviados />
+  <Bandeja tray-type="enviados" />
 </template>
+
 <script setup>
-// Vista puente: delega la experiencia de enviados al modulo correspondiente.
-import Enviados from '@/modules/enviados/index.vue';
+// Enviados reutiliza el modulo de bandeja (mismo diseño que entrada, destacados y archivados).
+import Bandeja from '@/modules/bandeja/index.vue'
 </script>

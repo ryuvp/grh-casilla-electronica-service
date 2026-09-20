@@ -2,8 +2,19 @@
   <div class="card ce-bandeja">
 
     <!-- Filter bar -->
-    <div class="ce-filter-bar">
-      <Filtro :key="props.trayType" @buscar="handleBuscar" />
+    <div class="ce-filter-bar d-flex align-items-end gap-3">
+      <div class="flex-grow-1 min-w-0">
+        <Filtro :key="props.trayType" @buscar="handleBuscar" />
+      </div>
+      <!-- Solo perfiles admin/notificador pueden emitir notificaciones. -->
+      <button
+        v-if="esEnviados && canWriteNotifications"
+        type="button"
+        class="btn btn-success flex-shrink-0"
+        @click="nuevoMensaje"
+      >
+        <i class="bi bi-envelope-plus me-2"></i>Nuevo mensaje
+      </button>
     </div>
 
     <!-- Full-width Gmail list -->
@@ -11,6 +22,7 @@
       :mensajes="mensajesFiltrados"
       :pagination="store.pagination"
       :selected="selected"
+      :tray-type="props.trayType"
       @seleccionar="seleccionarMensaje"
       @page-change="handlePageChange"
       @items-per-page-change="handleSizeChange"
@@ -41,24 +53,46 @@
 
     </Teleport>
 
+    <!-- Modal para redactar un nuevo mensaje (solo bandeja de enviados) -->
+    <Formulario
+      v-if="esEnviados && canWriteNotifications"
+      ref="formularioRef"
+      :item="formItem"
+    />
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, useTemplateRef } from 'vue'
 import Filtro    from './Filtro.vue'
 import Lista     from './Lista.vue'
 import Contenido from './Contenido.vue'
+import Formulario from '@/modules/enviados/Formulario.vue'
 import { useMensajesStore } from '@/stores/mensajes/mensajesStore'
+import useAuthStore from '@/stores/auth/authStore'
 
 const props = defineProps({
   trayType: { type: String, default: 'entrada' }
 })
 
 const store        = useMensajesStore()
+const authStore    = useAuthStore()
 const selected     = ref(null)
 const queryFilters = ref({})
 const sortParams   = ref({ sort: 'created_at', order: 'desc' })
+
+const esEnviados            = computed(() => props.trayType === 'enviados')
+const canWriteNotifications = computed(() => authStore.canWriteNotifications)
+const formItem              = ref({ ...store.default })
+const formularioRef         = useTemplateRef('formularioRef')
+
+// Prepara y abre el formulario de un nuevo mensaje.
+function nuevoMensaje() {
+  if (!canWriteNotifications.value) return
+  formItem.value = { ...store.default }
+  formularioRef.value?.abrir()
+}
 
 onMounted(async () => { await cargarBandeja() })
 
@@ -73,7 +107,8 @@ const mensajesFiltrados = computed(() => store.mensajes)
 
 function seleccionarMensaje(mensaje) {
   selected.value = mensaje
-  if (!mensaje.leido) store.marcarLeido(mensaje.id)
+  // En enviados el estado "leido" es del destinatario: quien envia no lo marca.
+  if (!esEnviados.value && !mensaje.leido) store.marcarLeido(mensaje.id)
 }
 
 function cerrarDrawer() {

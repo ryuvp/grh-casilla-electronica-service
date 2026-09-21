@@ -8,6 +8,11 @@ const ApiService = createApiService(import.meta.env.VITE_AUTH_API);
 const ApiCasillaService = createApiService(import.meta.env.VITE_API_URL);
 // Origen permitido para comunicacion segura con ventana padre.
 const allowedOrigin = import.meta.env.VITE_AUTH_ORIGIN;
+// Late de sesion: los hijos no reciben aviso del backend cuando el token se revoca desde otro
+// servicio/dispositivo, asi que una pestana abierta e inactiva debe preguntar periodicamente.
+const HEARTBEAT_SESION_MS = 30000;
+let heartbeatSesionInterval = null;
+let heartbeatVisibilityHandler = null;
 
 // Helper para eliminar permisos duplicados
 const uniquePermissions = (permissions = []) => {
@@ -352,6 +357,43 @@ const useAuthStore = defineStore('auth', {
       return await this.validationRequest;
     },
 
+    // Consulta el endpoint liviano /validar-token; un 401 con el token vigente marca la sesion como
+    // invalidada y App.vue (watch de sesionInvalidada) decide como salir.
+    async verificarSesion() {
+      const tokenUsado = JwtService.getToken();
+      if (!tokenUsado || this.validationRequest) return;
+
+      try {
+        await ApiService.get('/validar-token');
+      } catch (error) {
+        if (error?.response?.status === 401 && JwtService.getToken() === tokenUsado) {
+          this.sesionInvalidada = true;
+        }
+      }
+    },
+
+    // Revisa la sesion cada HEARTBEAT_SESION_MS y al volver a la pestana (los navegadores
+    // ralentizan los timers de pestanas en segundo plano).
+    iniciarHeartbeatSesion() {
+      this.detenerHeartbeatSesion();
+      heartbeatSesionInterval = setInterval(() => this.verificarSesion(), HEARTBEAT_SESION_MS);
+      heartbeatVisibilityHandler = () => {
+        if (document.visibilityState === 'visible') this.verificarSesion();
+      };
+      document.addEventListener('visibilitychange', heartbeatVisibilityHandler);
+    },
+
+    detenerHeartbeatSesion() {
+      if (heartbeatSesionInterval) {
+        clearInterval(heartbeatSesionInterval);
+        heartbeatSesionInterval = null;
+      }
+      if (heartbeatVisibilityHandler) {
+        document.removeEventListener('visibilitychange', heartbeatVisibilityHandler);
+        heartbeatVisibilityHandler = null;
+      }
+    },
+
     // Ejecuta cierre de sesion remoto y limpia estado/token local.
     async logout(localOnly = false) {
       try {
@@ -362,6 +404,7 @@ const useAuthStore = defineStore('auth', {
         console.warn("Logout remoto fallido:", err);
       } finally {
         // Limpieza local únicamente.
+        this.detenerHeartbeatSesion();
         JwtService.destroyToken();
         JwtService.destroyUserLogged();
 

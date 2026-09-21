@@ -172,6 +172,16 @@ watch(() => authStore.sesionInvalidada, async (invalida) => {
   salirPorSesionInvalida();
 });
 
+// Late de sesion: solo mientras haya una sesion autenticada y lista. Cubre el caso de una pestana
+// abierta e inactiva cuando la sesion se cierra desde otro servicio (no hay aviso en tiempo real).
+watch(() => authStore.isAuthReady && authStore.isAuthenticated, (activa) => {
+  if (activa) {
+    authStore.iniciarHeartbeatSesion();
+  } else {
+    authStore.detenerHeartbeatSesion();
+  }
+}, { immediate: true });
+
 onBeforeMount(() => {
   configStore.overrideLayoutConfig();
   themeStore.setThemeMode(themeConfigValue.value);
@@ -234,6 +244,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  authStore.detenerHeartbeatSesion();
   window.removeEventListener("message", handleMessage);
   window.removeEventListener("storage", handleCerrarHijas);
 });

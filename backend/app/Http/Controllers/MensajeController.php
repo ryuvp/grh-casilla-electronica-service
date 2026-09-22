@@ -277,13 +277,20 @@ class MensajeController extends Controller
     public function store(Request $request)
     {
         if (!$request->filled('casilla_destino_id') && $request->filled('designacion_destino_id')) {
-            $casillaDestino = $this->casillaIdentity->resolveOrCreateCasillaPorDesignacion(
+            $casillaDestino = $this->casillaIdentity->resolveCasillaPorDesignacion(
                 (int) $request->input('designacion_destino_id'),
                 $request->bearerToken()
             );
 
             if ($casillaDestino) {
                 $request->merge(['casilla_destino_id' => $casillaDestino->id]);
+            } else {
+                // Ya no se crea la casilla del destinatario en su nombre: solo la
+                // persona misma puede decidir tenerla (opt-in explicito).
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'El destinatario todavía no tiene una casilla electrónica activa. No se le puede notificar hasta que la cree.',
+                ], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
         }
 
@@ -339,17 +346,18 @@ class MensajeController extends Controller
             $validated['designaciones_destino_ids'],
         );
 
-        // Resuelve/crea la casilla de la PERSONA detras de cada designacion
-        // adicional indicada (p.ej. cuando el consumidor -como el modulo
-        // "Enviar a Casilla" del SGD- conoce designaciones destino pero no sus
-        // casilla_id ni el usuario_id real). Si la resolucion/creacion falla
+        // Resuelve la casilla YA EXISTENTE de la PERSONA detras de cada
+        // designacion adicional indicada (p.ej. cuando el consumidor -como el
+        // modulo "Enviar a Casilla" del SGD- conoce designaciones destino pero
+        // no sus casilla_id ni el usuario_id real). Ya no se crea una casilla
+        // nueva en su nombre: si aun no tiene una, o si la resolucion falla
         // (p.ej. error de BD o de Auth Service), se registra en
         // $destinatariosNoResueltos en vez de perderse en silencio.
         $destinatariosNoResueltos = [];
         $token = $request->bearerToken();
 
         foreach ($designacionesDestinoIds as $designacionId) {
-            $casillaInterna = $this->casillaIdentity->resolveOrCreateCasillaPorDesignacion((int) $designacionId, $token);
+            $casillaInterna = $this->casillaIdentity->resolveCasillaPorDesignacion((int) $designacionId, $token);
 
             if ($casillaInterna) {
                 $casillaDestinoIds[] = $casillaInterna->id;
@@ -393,7 +401,7 @@ class MensajeController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => !empty($destinatariosNoResueltos)
-                    ? 'No se pudo crear/resolver la casilla de ningun destinatario indicado. Intente nuevamente.'
+                    ? 'Ninguno de los destinatarios indicados tiene una casilla electrónica activa todavía. No se les puede notificar hasta que la creen.'
                     : 'Debe indicar al menos un destinatario (casilla_destino_id, casilla_destino_ids, designaciones_destino_ids o administrados_externos)',
                 'destinatarios_no_resueltos' => $destinatariosNoResueltos,
             ], Response::HTTP_BAD_REQUEST);

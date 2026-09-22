@@ -36,6 +36,8 @@ Route::middleware('throttle:api')->get('/health', function () {
 // clave del limiter, para que el cupo de 600 req/min se cuente por usuario real
 // y no por la IP compartida de la sede (ver RateLimiter::for('api')).
 Route::middleware(['remoteauth', 'throttle:api'])->group(function () {
+    Route::get('/mi-casilla/estado', [CasillaController::class, 'miCasillaEstado']);
+    Route::post('/mi-casilla', [CasillaController::class, 'crearMiCasilla']);
     Route::apiResource('/casillas', CasillaController::class);
     Route::get('/mensajes/verificar-envios', [MensajeController::class, 'verificarEnvios']);
     Route::get('/mensajes/entrada', [MensajeController::class, 'bandejaEntrada']);

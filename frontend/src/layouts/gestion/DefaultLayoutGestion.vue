@@ -30,6 +30,7 @@
   <KTDrawers />
   <KTScrollTop />
   <KTModals />
+  <AvisoCrearCasilla />
 </template>
 
 <script setup>
@@ -43,6 +44,7 @@ import KTFooter from "@/layouts/default-layout/components/footer/Footer.vue";
 import KTDrawers from "@/layouts/default-layout/components/drawers/Drawers.vue";
 import KTModals from "@/layouts/default-layout/components/modals/Modals.vue";
 import KTScrollTop from "@/layouts/default-layout/components/extras/ScrollTop.vue";
+import AvisoCrearCasilla from "@/components/AvisoCrearCasilla.vue";
 
 import { reinitializeComponents } from "@/core/plugins/keenthemes";
 import LayoutService from "@/core/services/LayoutService";

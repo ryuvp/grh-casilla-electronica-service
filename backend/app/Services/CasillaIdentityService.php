@@ -79,11 +79,10 @@ class CasillaIdentityService
     }
 
     /**
-     * Resuelve la casilla activa de la PERSONA autenticada. Si todavia no
-     * tiene una (p.ej. un ciudadano al que recien se le otorgo el rol de
-     * Casilla en Auth Service, o un trabajador al que nunca se le habia
-     * notificado nada), se resuelve/crea en el momento en vez de bloquearlo
-     * con un 403 hasta que alguien le envie un mensaje primero.
+     * Resuelve la casilla activa de la PERSONA autenticada. YA NO la crea
+     * automaticamente: si todavia no tiene una, retorna null y el llamador
+     * responde 403/estado "sin casilla" para que el frontend le muestre el
+     * aviso de "crear mi casilla" (opt-in explicito, ver autoCrearCasillaPropia()).
      */
     public function getAuthCasilla(Request $request): ?Casilla
     {
@@ -92,9 +91,25 @@ class CasillaIdentityService
             return null;
         }
 
-        $casilla = $this->getActiveCasillaByUsuarioId($usuarioId);
-        if ($casilla) {
-            return $casilla;
+        return $this->getActiveCasillaByUsuarioId($usuarioId);
+    }
+
+    /**
+     * Crea la casilla de la PERSONA AUTENTICADA, a su propio pedido explicito
+     * (p.ej. aceptó el aviso "¿Quieres crear tu casilla electrónica?"). Es el
+     * unico camino por el que un usuario interno obtiene una casilla: nadie
+     * mas puede creársela por él.
+     */
+    public function autoCrearCasillaPropia(Request $request): ?Casilla
+    {
+        $usuarioId = $this->getAuthUsuarioId($request);
+        if (!$usuarioId) {
+            return null;
+        }
+
+        $existente = $this->getActiveCasillaByUsuarioId($usuarioId);
+        if ($existente) {
+            return $existente;
         }
 
         $authUser = $this->getAuthUser($request);
@@ -105,7 +120,8 @@ class CasillaIdentityService
             $usuarioId,
             $this->getAuthDni($request),
             $nombre !== '' ? $nombre : null,
-            is_bool($esExterno) ? $esExterno : null
+            is_bool($esExterno) ? $esExterno : null,
+            permitirCrear: true
         );
 
         $designacionActualId = data_get($authUser, 'designacion_logeada.id');
@@ -131,11 +147,14 @@ class CasillaIdentityService
     }
 
     /**
-     * Resuelve la casilla de la PERSONA que ocupa una designacion, consultando
-     * a Auth Service (fetchActorDetailsByDesignacionId) el usuario_id/DNI real
-     * detras de esa designacion.
+     * Resuelve la casilla YA EXISTENTE de la PERSONA que ocupa una designacion,
+     * consultando a Auth Service (fetchActorDetailsByDesignacionId) el
+     * usuario_id/DNI real detras de esa designacion. NUNCA crea una casilla
+     * nueva: nadie puede crearle casilla a otra persona sin su consentimiento
+     * (ver autoCrearCasillaPropia(), el unico camino de creacion para
+     * usuarios internos). Si la persona aun no tiene casilla, retorna null.
      */
-    public function resolveOrCreateCasillaPorDesignacion(int $designacionId, ?string $token): ?Casilla
+    public function resolveCasillaPorDesignacion(int $designacionId, ?string $token): ?Casilla
     {
         $actor = $this->fetchActorDetailsByDesignacionId($designacionId, $token);
         $usuarioId = data_get($actor, 'usuario_id');
@@ -151,7 +170,8 @@ class CasillaIdentityService
             (int) $usuarioId,
             data_get($actor, 'numero_documento'),
             data_get($actor, 'usuario_nombre'),
-            is_bool($esPersonaNatural) ? $esPersonaNatural : null
+            is_bool($esPersonaNatural) ? $esPersonaNatural : null,
+            permitirCrear: false
         );
 
         // designacion_id se guarda solo como dato de referencia (la mas
@@ -174,7 +194,14 @@ class CasillaIdentityService
      *   vez de crear una nueva y perder su historial.
      * - Si no existe ninguna, crea una nueva con los datos disponibles.
      */
-    public function resolveOrCreateCasillaPersona(?int $usuarioId, ?string $dni, ?string $nombre, ?bool $esExterno = null): ?Casilla
+    /**
+     * @param bool $permitirCrear Si es false, SOLO resuelve una casilla ya
+     * existente (o la enlaza por DNI si ya existia), pero nunca crea una
+     * nueva. Una persona (interna o externa por consentimiento explicito via
+     * autoCrearCasillaPropia()) es la unica que puede decidir tener casilla;
+     * nadie mas puede creársela "para" ella sin que lo pida.
+     */
+    public function resolveOrCreateCasillaPersona(?int $usuarioId, ?string $dni, ?string $nombre, ?bool $esExterno = null, bool $permitirCrear = true): ?Casilla
     {
         if ($usuarioId) {
             $casilla = Casilla::where('usuario_id', $usuarioId)->first();
@@ -192,6 +219,10 @@ class CasillaIdentityService
 
                 return $casillaPorDni->fresh();
             }
+        }
+
+        if (!$permitirCrear) {
+            return null;
         }
 
         if (!$usuarioId && !$dni) {

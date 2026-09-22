@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\CasillaResource;
 use App\Models\Casilla;
+use App\Services\CasillaIdentityService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,49 @@ use Illuminate\Validation\Rule;
  */
 class CasillaController extends Controller
 {
+    public function __construct(private readonly CasillaIdentityService $casillaIdentity)
+    {
+    }
+
+    /**
+     * Estado de la casilla propia del usuario autenticado, SIN crearla.
+     * El frontend lo usa para saber si debe mostrar el aviso "¿Quieres crear
+     * tu casilla electrónica?" a un usuario interno que todavía no tiene una.
+     */
+    public function miCasillaEstado(Request $request)
+    {
+        $usuarioId = $this->casillaIdentity->getAuthUsuarioId($request);
+        if (!$usuarioId) {
+            return response()->json(['status' => 'error', 'message' => 'No autorizado'], Response::HTTP_FORBIDDEN);
+        }
+
+        $casilla = $this->casillaIdentity->getAuthCasilla($request);
+
+        return response()->json([
+            'tiene_casilla' => (bool) $casilla,
+            'casilla' => $casilla ? new CasillaResource($casilla) : null,
+        ]);
+    }
+
+    /**
+     * Crea la casilla del usuario autenticado a su propio pedido explícito
+     * (aceptó el aviso). Es idempotente: si ya tiene una, la devuelve sin
+     * duplicar. Este es el ÚNICO camino de creación para un usuario interno;
+     * nadie puede crearle la casilla desde otro flujo (ver CasillaIdentityService).
+     */
+    public function crearMiCasilla(Request $request)
+    {
+        $casilla = $this->casillaIdentity->autoCrearCasillaPropia($request);
+
+        if (!$casilla) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo crear la casilla. Intente nuevamente.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return new CasillaResource($casilla);
+    }
     /**
      * Display a listing of the resource.
      * 

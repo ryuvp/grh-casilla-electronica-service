@@ -183,7 +183,7 @@
 
     <div class="content-section">
         <p>
-            La presente constancia acredita la lectura de la notificación en la Casilla Electrónica por <strong>"{{ $mensaje->asunto }}"</strong> emitida por <strong>{{ data_get($remitente, 'dependencia_nombre') ?: data_get($remitente, 'cargo_nombre') ?: data_get($remitente, 'display_name') ?: 'N/A' }}</strong>.
+            La presente constancia acredita la lectura de la notificación en la Casilla Electrónica por <strong>"{{ $mensaje->asunto }}"</strong> emitida por <strong>{{ data_get($remitente, 'unidad_organizacion_nombre') ?: data_get($remitente, 'cargo_nombre') ?: data_get($remitente, 'display_name') ?: 'N/A' }}</strong>.
         </p>
         <p>
             Le recordamos que la notificación del presente documento se considera efectuada desde el día hábil siguiente de su depósito en la casilla electrónica.

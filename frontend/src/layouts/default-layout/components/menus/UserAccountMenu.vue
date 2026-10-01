@@ -58,13 +58,10 @@
       <a :href="perfilUrl" class="menu-link px-5">Mi Perfil</a>
     </div>
     <!--begin::Menu item-->
-    <div
-      class="menu-item px-5"
-      data-kt-menu-trigger="hover"
-      data-kt-menu-placement="left-start"
-      data-kt-menu-flip="center, top"
-    >
-      <router-link to="/pages/profile/overview" class="menu-link px-5">
+    <!-- Idioma: visualmente igual a un ítem habilitado, pero sin acción real
+         (no navega ni abre submenú) porque por ahora solo se soporta español. -->
+    <div class="menu-item px-5">
+      <a href="#" class="menu-link px-5" @click.prevent>
         <span class="menu-title position-relative">
           Idioma
           <span
@@ -78,53 +75,7 @@
             />
           </span>
         </span>
-      </router-link>
-
-      <!--begin::Menu sub-->
-      <div class="menu-sub menu-sub-dropdown w-175px py-4">
-
-        <!--begin::Menu item-->
-        <div class="menu-item px-3">
-          <a
-            href="#"
-            class="menu-link d-flex px-5"
-            :class="{ active: currentLanguage === 'es' }"
-            @click="setLang('es')"
-          >
-            <span class="symbol symbol-20px me-4">
-              <img
-                class="rounded-1"
-                :src="getAssetPath('media/flags/spain.svg')"
-                alt="metronic"
-              />
-            </span>
-            Español
-          </a>
-        </div>
-        <!--end::Menu item-->
-
-        <!--begin::Menu item-->
-        <div class="menu-item px-3">
-          <a
-            href="#"
-            class="menu-link d-flex px-5"
-            :class="{ active: currentLanguage === 'en' }"
-            @click="setLang('en')"
-          >
-            <span class="symbol symbol-20px me-4">
-              <img
-                class="rounded-1"
-                :src="getAssetPath('media/flags/united-states.svg')"
-                alt="metronic"
-              />
-            </span>
-            Inglés
-          </a>
-        </div>
-        <!--end::Menu item-->
-
-      </div>
-      <!--end::Menu sub-->
+      </a>
     </div>
     <!--end::Menu item-->
     <div class="menu-item px-5">
@@ -159,7 +110,8 @@ const userFullName = computed(() => {
 });
 const i18n = useI18n();
 
-i18n.locale.value = localStorage.getItem("lang") || "en";
+// Solo se soporta español: se ignora cualquier "lang" guardado antes.
+i18n.locale.value = "es";
 
 const countries = {
   es : {
@@ -193,15 +145,6 @@ function getColorFromString(str) {
   const h = Math.abs(hash) % 360;
   return `hsl(${h}, 70%, 50%)`;
 }
-
-const setLang = (lang) => {
-  localStorage.setItem("lang", lang);
-  i18n.locale.value = lang;
-};
-
-const currentLanguage = computed(() => {
-  return i18n.locale.value;
-});
 
 const currentLangugeLocale = computed(() => {
   return countries[i18n.locale.value] || countries.en;

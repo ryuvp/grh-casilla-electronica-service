@@ -150,7 +150,7 @@
                 </tr>
                 <tr>
                     <td class="label">Dependencia:</td>
-                    <td class="value" style="text-transform: uppercase;">{{ data_get($remitente, 'dependencia_nombre') ?: 'N/A' }}</td>
+                    <td class="value" style="text-transform: uppercase;">{{ data_get($remitente, 'unidad_organizacion_nombre') ?: 'N/A' }}</td>
                 </tr>
                 <tr>
                     <td class="label">Casilla de Origen:</td>

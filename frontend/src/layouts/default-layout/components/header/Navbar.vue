@@ -30,8 +30,8 @@
     <!--begin::User menu-->
     <div class="app-navbar-item ms-1 ms-md-4 d-none d-md-flex align-items-center">
       <div class="user-summary text-end">
-        <div class="fw-bold text-gray-900 text-uppercase lh-sm">{{ userDisplayName }}</div>
-        <div v-if="userCargoName" class="text-muted fs-8 lh-sm">{{ userCargoName }}</div>
+        <div class="fw-bold text-gray-900 text-uppercase lh-sm text-truncate" :title="userDisplayName">{{ userDisplayName }}</div>
+        <div v-if="userCargoName" class="text-muted fs-8 lh-sm text-truncate" :title="userCargoName">{{ userCargoName }}</div>
       </div>
     </div>
     <div id="kt_header_user_menu_toggle" class="app-navbar-item ms-1 ms-md-4">

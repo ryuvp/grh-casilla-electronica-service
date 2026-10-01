@@ -243,9 +243,9 @@ const sortedData = computed(() => {
     }
 
     // Ordenamiento especial para nombres y dependencias
-    if (sortState.value.label === 'name' || sortState.value.label === 'nombre' || sortState.value.label === 'dependencia_nombre' || sortState.value.label === 'usuario_id' || sortState.value.label === 'tipo_documento_id') {
-      const nameA = String(aValue || a.nombre || a.name || a.dependencia_nombre || a.usuario_nombre || a.tipo_documento_nombre || '')
-      const nameB = String(bValue || b.nombre || b.name || b.dependencia_nombre || b.usuario_nombre || b.tipo_documento_nombre || '')
+    if (sortState.value.label === 'name' || sortState.value.label === 'nombre' || sortState.value.label === 'unidad_organizacion_nombre' || sortState.value.label === 'usuario_id' || sortState.value.label === 'tipo_documento_id') {
+      const nameA = String(aValue || a.nombre || a.name || a.unidad_organizacion_nombre || a.usuario_nombre || a.tipo_documento_nombre || '')
+      const nameB = String(bValue || b.nombre || b.name || b.unidad_organizacion_nombre || b.usuario_nombre || b.tipo_documento_nombre || '')
       const comparison = nameA.localeCompare(nameB, 'es', { 
         numeric: true, 
         sensitivity: 'base' 

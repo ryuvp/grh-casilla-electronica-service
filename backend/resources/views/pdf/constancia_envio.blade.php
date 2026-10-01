@@ -176,7 +176,7 @@
 
     <div class="content-section">
         <p>
-            La presente constancia acredita el depósito de la notificación del <strong>"{{ $mensaje->asunto }}"</strong> en la Casilla Electrónica por Notificación Electrónica del Gobierno Regional de Huánuco emitida por <strong>{{ data_get($remitente, 'dependencia_nombre') ?: data_get($remitente, 'cargo_nombre') ?: data_get($remitente, 'display_name') ?: 'N/A' }}</strong>.
+            La presente constancia acredita el depósito de la notificación del <strong>"{{ $mensaje->asunto }}"</strong> en la Casilla Electrónica por Notificación Electrónica del Gobierno Regional de Huánuco emitida por <strong>{{ data_get($remitente, 'unidad_organizacion_nombre') ?: data_get($remitente, 'cargo_nombre') ?: data_get($remitente, 'display_name') ?: 'N/A' }}</strong>.
         </p>
         <p>
             Le recordamos que para efectos de acreditar que la notificación se ha realizado válidamente, el Sistema de Casilla Electrónica (SCE) genera automáticamente la constancia de notificación electrónica, en la que consta la fecha y hora exacta del depósito del documento, las mismas que se realizarán en el horario establecido por las leyes vigentes, caso contrario de encontrarse fuera de dicho horario se tomará como fecha valida de notificación el día hábil siguiente.

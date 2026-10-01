@@ -12,7 +12,7 @@ export const useFileStore = defineStore('fileStore', {
     async subirArchivo(file) {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('carpeta', 'public')
+      formData.append('carpeta', 'casilla-electronica')
       formData.append('temporal', true)
 
       try {

@@ -33,7 +33,7 @@
               </div>
             </div>
 
-            <div class="col-12"><hr class="my-2 text-muted"></div>
+            <div class="col-12"><hr class="my-2 text-muted" /></div>
 
             <div class="col-md-6">
               <label class="form-label fw-bold text-muted mb-0">Usuario Asociado</label>
@@ -49,11 +49,11 @@
               <div class="form-control-plaintext text-dark text-uppercase py-0">{{ resumen?.cargo_nombre || 'N/A' }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold text-muted mb-0">Dependencia</label>
-              <div class="form-control-plaintext text-dark text-uppercase py-0">{{ resumen?.dependencia_nombre || 'N/A' }}</div>
+              <label class="form-label fw-bold text-muted mb-0">Unidad de Organización</label>
+              <div class="form-control-plaintext text-dark text-uppercase py-0">{{ resumen?.unidad_organizacion_nombre || 'N/A' }}</div>
             </div>
 
-            <div class="col-12"><hr class="my-2 text-muted"></div>
+            <div class="col-12"><hr class="my-2 text-muted" /></div>
 
             <div class="col-md-6">
               <label class="form-label fw-bold text-muted mb-0">Vigencia Desde</label>

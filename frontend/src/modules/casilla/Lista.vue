@@ -25,7 +25,7 @@
         <div v-if="getDesignacion(item)" class="d-flex flex-column">
           <span class="fw-bold text-dark text-uppercase fs-7">{{ getDesignacion(item).usuario_nombre }}</span>
           <span class="text-muted small text-uppercase" style="font-size: 11px;">
-            {{ getDesignacion(item).cargo_nombre }} - {{ getDesignacion(item).dependencia_nombre }}
+            {{ getDesignacion(item).cargo_nombre }} - {{ getDesignacion(item).unidad_organizacion_nombre }}
           </span>
         </div>
         <div v-else class="text-muted small">

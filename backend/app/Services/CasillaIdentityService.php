@@ -326,7 +326,7 @@ class CasillaIdentityService
         // muy poca frecuencia, y esta función se invoca repetidamente (remitente
         // + destinatario) al generar certificados/constancias en PDF. No se
         // cachean fallos/respuestas vacías para no "congelar" un error transitorio.
-        $cacheKey = "casilla_actor_desig_{$designacionId}";
+        $cacheKey = "casilla_actor_designacion_{$designacionId}";
         $cached = Cache::get($cacheKey);
         if ($cached) {
             return $cached;

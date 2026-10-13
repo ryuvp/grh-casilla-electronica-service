@@ -40,11 +40,44 @@ class Kernel extends HttpKernel
 
         'api' => [
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            // El throttle:api NO va aquí: correría antes que 'remoteauth' y el limiter
-            // siempre caería al fallback por IP. Se aplica explícitamente después de
-            // 'remoteauth' en routes/api.php para que ya exista auth_user al evaluarlo.
+            // El throttle:api NO va aquí: se aplica explícitamente después de
+            // 'remoteauth' en routes/api.php, y el orden real de ejecución lo
+            // garantiza $middlewarePriority (abajo), no la posición en el array.
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
+    ];
+
+    /**
+     * The priority-sorted list of middleware.
+     *
+     * Laravel reordena el stack de cada ruta segun esta lista (ver
+     * Illuminate\Routing\SortedMiddleware). Si no se declara aqui se usa la
+     * lista por defecto del framework, en la que 'ThrottleRequests' SI aparece
+     * y 'remoteauth' NO: el resultado es que 'throttle:api' se adelanta por
+     * encima de 'remoteauth' (arrastrado ademas por 'SubstituteBindings', que
+     * tambien esta priorizado y va despues del throttle). Escribir
+     * ['remoteauth', 'throttle:api'] en routes/api.php NO basta para evitarlo.
+     *
+     * Con 'RemoteAuth' declarado aqui ANTES de 'ThrottleRequests', el limiter
+     * se evalua cuando 'auth_user' ya existe y el cupo se cuenta por usuario
+     * real, no por la IP del ingress (que es la misma para todos y convertia
+     * los 600 req/min por usuario en un unico cupo global del servicio).
+     *
+     * @var array<int, class-string|string>
+     */
+    protected $middlewarePriority = [
+        \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+        \App\Http\Middleware\RemoteAuth::class,
+        \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        \Illuminate\Routing\Middleware\ThrottleRequestsWithRedis::class,
+        \Illuminate\Contracts\Session\Middleware\AuthenticatesSessions::class,
+        \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        \Illuminate\Auth\Middleware\Authorize::class,
     ];
 
     /**

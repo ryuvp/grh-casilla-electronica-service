@@ -21,8 +21,17 @@
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <!-- Base de datos de PRUEBAS, obligatoria y separada.
+             Sin esto, APP_ENV=testing seguia resolviendo a la conexion real del
+             .env (10.0.0.47), y los tests que usan RefreshDatabase /
+             DatabaseMigrations ejecutan migrate:fresh, que DROPEA todas las
+             tablas: `php artisan test` borraba la base de produccion.
+             No se usa sqlite :memory: porque las migraciones son especificas de
+             PostgreSQL (CREATE INDEX CONCURRENTLY, gin_trgm_ops, jsonb).
+             Si esta base no existe, los tests fallan con "database does not
+             exist", que es un fallo ruidoso y seguro en vez de destructivo.
+             Crearla una vez:  createdb casilla_service_test  -->
+        <env name="DB_DATABASE" value="casilla_service_test"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
